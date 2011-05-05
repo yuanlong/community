@@ -348,7 +348,7 @@ public class XaLogicalLog
         try
         {
             LogIoUtils.writeCommit( false, writeBuffer, identifier, txId, masterId );
-            writeBuffer.force();
+//            writeBuffer.force();
             cacheTxStartPosition( txId, masterId, startEntry );
         }
         catch ( IOException e )
@@ -412,7 +412,7 @@ public class XaLogicalLog
         try
         {
             LogIoUtils.writeCommit( true, writeBuffer, identifier, txId, masterId );
-            writeBuffer.force();
+//            writeBuffer.force();
             cacheTxStartPosition( txId, masterId, startEntry );
         }
         catch ( IOException e )

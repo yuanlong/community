@@ -198,7 +198,7 @@ public class TxLog
         buffer.put( MARK_COMMIT ).put( (byte) globalId.length ).put( globalId );
         buffer.flip();
         fileChannel.write( buffer );
-        fileChannel.force( false );
+//        fileChannel.force( false );
         recordCount++;
     }
 
