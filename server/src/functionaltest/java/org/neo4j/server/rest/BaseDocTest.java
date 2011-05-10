@@ -17,25 +17,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.index.impl.lucene;
+package org.neo4j.server.rest;
 
-import static org.neo4j.index.impl.lucene.LuceneDataSource.LUCENE_VERSION;
-
-import java.io.Reader;
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.LowerCaseFilter;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.WhitespaceTokenizer;
-
-final class CustomAnalyzer extends Analyzer
+public class BaseDocTest
 {
-    static boolean called;
-    
-    @Override
-    public final TokenStream tokenStream( String fieldName, Reader reader )
-    {
-        called = true;
-        return new LowerCaseFilter( LUCENE_VERSION, new WhitespaceTokenizer( LUCENE_VERSION, reader ) );
-    }
+
+    protected DocumentationOutput doc;
+
 }
