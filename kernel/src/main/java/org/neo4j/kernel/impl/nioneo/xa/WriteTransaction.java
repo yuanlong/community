@@ -24,15 +24,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.transaction.xa.XAException;
+import javax.transaction.xa.XAResource;
 
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.helpers.Pair;
 import org.neo4j.kernel.impl.core.LockReleaser;
 import org.neo4j.kernel.impl.core.PropertyIndex;
 import org.neo4j.kernel.impl.nioneo.store.DynamicRecord;
@@ -49,16 +51,17 @@ import org.neo4j.kernel.impl.nioneo.store.PropertyStore;
 import org.neo4j.kernel.impl.nioneo.store.PropertyType;
 import org.neo4j.kernel.impl.nioneo.store.Record;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipChainPosition;
-import org.neo4j.kernel.impl.nioneo.store.RelationshipData;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipStore;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeData;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeRecord;
 import org.neo4j.kernel.impl.nioneo.store.RelationshipTypeStore;
 import org.neo4j.kernel.impl.nioneo.xa.Command.PropertyCommand;
+import org.neo4j.kernel.impl.persistence.NeoStoreTransaction;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.LockType;
 import org.neo4j.kernel.impl.transaction.xaframework.XaCommand;
+import org.neo4j.kernel.impl.transaction.xaframework.XaConnection;
 import org.neo4j.kernel.impl.transaction.xaframework.XaLogicalLog;
 import org.neo4j.kernel.impl.transaction.xaframework.XaTransaction;
 import org.neo4j.kernel.impl.util.ArrayMap;
@@ -68,7 +71,7 @@ import org.neo4j.kernel.impl.util.RelIdArray;
  * Transaction containing {@link Command commands} reflecting the operations
  * performed in the transaction.
  */
-class WriteTransaction extends XaTransaction
+public class WriteTransaction extends XaTransaction implements NeoStoreTransaction
 {
     private final Map<Long,NodeRecord> nodeRecords =
         new HashMap<Long,NodeRecord>();
@@ -76,20 +79,20 @@ class WriteTransaction extends XaTransaction
         new HashMap<Long,PropertyRecord>();
     private final Map<Long,RelationshipRecord> relRecords =
         new HashMap<Long,RelationshipRecord>();
-    private final Map<Integer,RelationshipTypeRecord> relTypeRecords = 
+    private final Map<Integer,RelationshipTypeRecord> relTypeRecords =
         new HashMap<Integer,RelationshipTypeRecord>();
-    private final Map<Integer,PropertyIndexRecord> propIndexRecords = 
+    private final Map<Integer,PropertyIndexRecord> propIndexRecords =
         new HashMap<Integer,PropertyIndexRecord>();
 
-    private final ArrayList<Command.NodeCommand> nodeCommands = 
+    private final ArrayList<Command.NodeCommand> nodeCommands =
         new ArrayList<Command.NodeCommand>();
-    private final ArrayList<Command.PropertyCommand> propCommands = 
+    private final ArrayList<Command.PropertyCommand> propCommands =
         new ArrayList<Command.PropertyCommand>();
-    private final ArrayList<Command.PropertyIndexCommand> propIndexCommands = 
+    private final ArrayList<Command.PropertyIndexCommand> propIndexCommands =
         new ArrayList<Command.PropertyIndexCommand>();
-    private final ArrayList<Command.RelationshipCommand> relCommands = 
+    private final ArrayList<Command.RelationshipCommand> relCommands =
         new ArrayList<Command.RelationshipCommand>();
-    private final ArrayList<Command.RelationshipTypeCommand> relTypeCommands = 
+    private final ArrayList<Command.RelationshipTypeCommand> relTypeCommands =
         new ArrayList<Command.RelationshipTypeCommand>();
 
     private final NeoStore neoStore;
@@ -98,6 +101,7 @@ class WriteTransaction extends XaTransaction
 
     private final LockReleaser lockReleaser;
     private final LockManager lockManager;
+    private XaConnection xaConnection;
 
     WriteTransaction( int identifier, XaLogicalLog log, NeoStore neoStore,
         LockReleaser lockReleaser, LockManager lockManager )
@@ -108,20 +112,21 @@ class WriteTransaction extends XaTransaction
         this.lockManager = lockManager;
     }
 
+    @Override
     public boolean isReadOnly()
     {
         if ( isRecovered() )
         {
-            if ( nodeCommands.size() == 0 && propCommands.size() == 0 && 
-                relCommands.size() == 0 && relTypeCommands.size() == 0 && 
+            if ( nodeCommands.size() == 0 && propCommands.size() == 0 &&
+                relCommands.size() == 0 && relTypeCommands.size() == 0 &&
                 propIndexCommands.size() == 0 )
             {
                 return true;
             }
             return false;
         }
-        if ( nodeRecords.size() == 0 && relRecords.size() == 0 && 
-            relTypeRecords.size() == 0 && propertyRecords.size() == 0 && 
+        if ( nodeRecords.size() == 0 && relRecords.size() == 0 &&
+            relTypeRecords.size() == 0 && propertyRecords.size() == 0 &&
             propIndexRecords.size() == 0 )
         {
             return true;
@@ -129,6 +134,7 @@ class WriteTransaction extends XaTransaction
         return false;
     }
 
+    @Override
     public void doAddCommand( XaCommand command )
     {
         // override
@@ -151,21 +157,21 @@ class WriteTransaction extends XaTransaction
         prepared = true;
         for ( RelationshipTypeRecord record : relTypeRecords.values() )
         {
-            Command.RelationshipTypeCommand command = 
-                new Command.RelationshipTypeCommand( 
+            Command.RelationshipTypeCommand command =
+                new Command.RelationshipTypeCommand(
                     neoStore.getRelationshipTypeStore(), record );
             relTypeCommands.add( command );
             addCommand( command );
         }
         for ( NodeRecord record : nodeRecords.values() )
         {
-            if ( !record.inUse() && record.getNextRel() != 
+            if ( !record.inUse() && record.getNextRel() !=
                 Record.NO_NEXT_RELATIONSHIP.intValue() )
             {
                 throw new InvalidRecordException( "Node record " + record
                     + " still has relationships" );
             }
-            Command.NodeCommand command = new Command.NodeCommand( 
+            Command.NodeCommand command = new Command.NodeCommand(
                 neoStore.getNodeStore(), record );
             nodeCommands.add( command );
             if ( !record.inUse() )
@@ -176,8 +182,8 @@ class WriteTransaction extends XaTransaction
         }
         for ( RelationshipRecord record : relRecords.values() )
         {
-            Command.RelationshipCommand command = 
-                new Command.RelationshipCommand( 
+            Command.RelationshipCommand command =
+                new Command.RelationshipCommand(
                     neoStore.getRelationshipStore(), record );
             relCommands.add( command );
             if ( !record.inUse() )
@@ -188,8 +194,8 @@ class WriteTransaction extends XaTransaction
         }
         for ( PropertyIndexRecord record : propIndexRecords.values() )
         {
-            Command.PropertyIndexCommand command = 
-                new Command.PropertyIndexCommand( 
+            Command.PropertyIndexCommand command =
+                new Command.PropertyIndexCommand(
                     neoStore.getPropertyStore().getIndexStore(), record );
             propIndexCommands.add( command );
             addCommand( command );
@@ -232,6 +238,7 @@ class WriteTransaction extends XaTransaction
         }
     }
 
+    @Override
     public void doRollback() throws XAException
     {
         if ( committed )
@@ -307,13 +314,13 @@ class WriteTransaction extends XaTransaction
                     {
                         if ( dynamicRecord.isCreated() )
                         {
-                            if ( dynamicRecord.getType() == 
+                            if ( dynamicRecord.getType() ==
                                 PropertyType.STRING.intValue() )
                             {
                                 getPropertyStore().freeStringBlockId(
                                     dynamicRecord.getId() );
                             }
-                            else if ( dynamicRecord.getType() == 
+                            else if ( dynamicRecord.getType() ==
                                 PropertyType.ARRAY.intValue() )
                             {
                                 getPropertyStore().freeArrayBlockId(
@@ -321,7 +328,7 @@ class WriteTransaction extends XaTransaction
                             }
                             else
                             {
-                                throw new InvalidRecordException( 
+                                throw new InvalidRecordException(
                                     "Unknown type on " + dynamicRecord );
                             }
                         }
@@ -363,19 +370,19 @@ class WriteTransaction extends XaTransaction
     {
         lockReleaser.removeNodeFromCache( id );
     }
-    
+
     private void addRelationshipType( int id )
     {
         setRecovered();
         RelationshipTypeData type;
         if ( isRecovered() )
         {
-            type = neoStore.getRelationshipTypeStore().getRelationshipType( 
+            type = neoStore.getRelationshipTypeStore().getRelationshipType(
                 id, true );
         }
         else
         {
-            type = neoStore.getRelationshipTypeStore().getRelationshipType( 
+            type = neoStore.getRelationshipTypeStore().getRelationshipType(
                 id );
         }
         lockReleaser.addRelationshipType( type );
@@ -386,19 +393,20 @@ class WriteTransaction extends XaTransaction
         PropertyIndexData index;
         if ( isRecovered() )
         {
-            index = 
-                neoStore.getPropertyStore().getIndexStore().getPropertyIndex( 
+            index =
+                neoStore.getPropertyStore().getIndexStore().getPropertyIndex(
                     id, true );
         }
         else
         {
-            index = 
-                neoStore.getPropertyStore().getIndexStore().getPropertyIndex( 
+            index =
+                neoStore.getPropertyStore().getIndexStore().getPropertyIndex(
                     id );
         }
         lockReleaser.addPropertyIndex( index );
     }
-    
+
+    @Override
     public void doCommit() throws XAException
     {
         if ( !isRecovered() && !prepared )
@@ -413,7 +421,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !isRecovered() && getCommitTxId() != neoStore.getLastCommittedTx() + 1 )
         {
-            throw new RuntimeException( "Tx id: " + getCommitTxId() + 
+            throw new RuntimeException( "Tx id: " + getCommitTxId() +
                     " not next transaction (" + neoStore.getLastCommittedTx() + ")" );
         }
         try
@@ -449,7 +457,7 @@ class WriteTransaction extends XaTransaction
             {
                 command.execute();
             }
-            
+
             neoStore.setLastCommittedTx( getCommitTxId() );
             if ( !isRecovered() )
             {
@@ -505,6 +513,8 @@ class WriteTransaction extends XaTransaction
             {
                 command.execute();
                 removeRelationshipFromCache( command.getKey() );
+                removeNodeFromCache( command.getFirstNode() );
+                removeNodeFromCache( command.getSecondNode() );
             }
             // nodes
             java.util.Collections.sort( nodeCommands, sorter );
@@ -520,7 +530,7 @@ class WriteTransaction extends XaTransaction
             }
             finally
             {
-                neoStore.setRecoveredStatus( false );   
+                neoStore.setRecoveredStatus( false );
             }
             neoStore.getIdGeneratorFactory().updateIdGenerators( neoStore );
             if ( !isRecovered() )
@@ -543,7 +553,7 @@ class WriteTransaction extends XaTransaction
             relTypeCommands.clear();
         }
     }
-    
+
 
     private void removePropertyFromCache( PropertyCommand command )
     {
@@ -564,7 +574,7 @@ class WriteTransaction extends XaTransaction
     {
         return neoStore.getRelationshipTypeStore();
     }
-    
+
     private int getRelGrabSize()
     {
         return neoStore.getRelationshipGrabSize();
@@ -595,7 +605,7 @@ class WriteTransaction extends XaTransaction
         return getNodeStore().loadLightNode( nodeId );
     }
 
-    public RelationshipData relationshipLoad( long id )
+    public RelationshipRecord relLoadLight( long id )
     {
         RelationshipRecord relRecord = getRelationshipRecord( id );
         if ( relRecord != null )
@@ -605,19 +615,17 @@ class WriteTransaction extends XaTransaction
 //            {
 //                return null;
 //            }
-            return new RelationshipData( id, relRecord.getFirstNode(),
-                relRecord.getSecondNode(), relRecord.getType() );
+            return relRecord;
         }
         relRecord = getRelationshipStore().getLightRel( id );
         if ( relRecord != null )
         {
-            return new RelationshipData( id, relRecord.getFirstNode(),
-                relRecord.getSecondNode(), relRecord.getType() );
+            return relRecord;
         }
         return null;
     }
 
-    ArrayMap<Integer,PropertyData> nodeDelete( long nodeId )
+    public ArrayMap<Integer,PropertyData> nodeDelete( long nodeId )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
         if ( nodeRecord == null )
@@ -627,11 +635,11 @@ class WriteTransaction extends XaTransaction
         }
         if ( !nodeRecord.inUse() )
         {
-            throw new IllegalStateException( "Unable to delete Node[" + nodeId + 
+            throw new IllegalStateException( "Unable to delete Node[" + nodeId +
             "] since it has already been deleted." );
         }
         nodeRecord.setInUse( false );
-        ArrayMap<Integer,PropertyData> propertyMap = 
+        ArrayMap<Integer,PropertyData> propertyMap =
             new ArrayMap<Integer,PropertyData>( 9, false, true );
         long nextProp = nodeRecord.getNextProp();
         while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
@@ -650,20 +658,20 @@ class WriteTransaction extends XaTransaction
             {
                 if ( !propRecord.isChanged() )
                 {
-                    propertyMap.put( propRecord.getKeyIndexId(), new PropertyData( 
+                    propertyMap.put( propRecord.getKeyIndexId(), new PropertyData(
                         propRecord.getId(), propertyGetValueOrNull( propRecord ) ) );
                 }
                 else
                 {
-                    // we have to re-read committed value since property has 
+                    // we have to re-read committed value since property has
                     // changed and old value is erased in memory
                     PropertyRecord diskValue = getPropertyStore().getRecord( propRecord.getId() );
                     getPropertyStore().makeHeavy( diskValue );
-                    propertyMap.put( diskValue.getKeyIndexId(), new PropertyData( 
+                    propertyMap.put( diskValue.getKeyIndexId(), new PropertyData(
                             diskValue.getId(), propertyGetValueOrNull( diskValue ) ) );
                 }
             }
-            
+
             nextProp = propRecord.getNextProp();
             propRecord.setInUse( false );
             // TODO: update count on property index record
@@ -675,7 +683,7 @@ class WriteTransaction extends XaTransaction
         return propertyMap;
     }
 
-    ArrayMap<Integer,PropertyData> relDelete( long id )
+    public ArrayMap<Integer,PropertyData> relDelete( long id )
     {
         RelationshipRecord record = getRelationshipRecord( id );
         if ( record == null )
@@ -685,10 +693,10 @@ class WriteTransaction extends XaTransaction
         }
         if ( !record.inUse() )
         {
-            throw new IllegalStateException( "Unable to delete relationship[" + 
+            throw new IllegalStateException( "Unable to delete relationship[" +
                 id + "] since it is already deleted." );
         }
-        ArrayMap<Integer,PropertyData> propertyMap = 
+        ArrayMap<Integer,PropertyData> propertyMap =
             new ArrayMap<Integer,PropertyData>( 9, false, true );
         long nextProp = record.getNextProp();
         while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
@@ -707,17 +715,17 @@ class WriteTransaction extends XaTransaction
             {
                 if ( !propRecord.isChanged() )
                 {
-                    propertyMap.put( propRecord.getKeyIndexId(), 
-                            new PropertyData( propRecord.getId(), 
-                                    propertyGetValueOrNull( propRecord ) ) ); 
+                    propertyMap.put( propRecord.getKeyIndexId(),
+                            new PropertyData( propRecord.getId(),
+                                    propertyGetValueOrNull( propRecord ) ) );
                 }
                 else
                 {
-                    // we have to re-read committed value since property has 
+                    // we have to re-read committed value since property has
                     // changed and old value is erased in memory
                     PropertyRecord diskValue = getPropertyStore().getRecord( propRecord.getId() );
                     getPropertyStore().makeHeavy( diskValue );
-                    propertyMap.put( diskValue.getKeyIndexId(), new PropertyData( 
+                    propertyMap.put( diskValue.getKeyIndexId(), new PropertyData(
                             diskValue.getId(), propertyGetValueOrNull( diskValue ) ) );
                 }
             }
@@ -740,10 +748,10 @@ class WriteTransaction extends XaTransaction
         // update first node prev
         if ( rel.getFirstPrevRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            Relationship lockableRel = new LockableRelationship( 
+            Relationship lockableRel = new LockableRelationship(
                 rel.getFirstPrevRel() );
             getWriteLock( lockableRel );
-            RelationshipRecord prevRel = getRelationshipRecord( 
+            RelationshipRecord prevRel = getRelationshipRecord(
                 rel.getFirstPrevRel() );
             if ( prevRel == null )
             {
@@ -761,17 +769,17 @@ class WriteTransaction extends XaTransaction
             }
             else
             {
-                throw new InvalidRecordException( 
+                throw new InvalidRecordException(
                     prevRel + " don't match " + rel );
             }
         }
         // update first node next
         if ( rel.getFirstNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            Relationship lockableRel = new LockableRelationship( 
+            Relationship lockableRel = new LockableRelationship(
                 rel.getFirstNextRel() );
             getWriteLock( lockableRel );
-            RelationshipRecord nextRel = getRelationshipRecord( 
+            RelationshipRecord nextRel = getRelationshipRecord(
                 rel.getFirstNextRel() );
             if ( nextRel == null )
             {
@@ -789,17 +797,17 @@ class WriteTransaction extends XaTransaction
             }
             else
             {
-                throw new InvalidRecordException( nextRel + " don't match " 
+                throw new InvalidRecordException( nextRel + " don't match "
                     + rel );
             }
         }
         // update second node prev
         if ( rel.getSecondPrevRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            Relationship lockableRel = new LockableRelationship( 
+            Relationship lockableRel = new LockableRelationship(
                 rel.getSecondPrevRel() );
             getWriteLock( lockableRel );
-            RelationshipRecord prevRel = getRelationshipRecord( 
+            RelationshipRecord prevRel = getRelationshipRecord(
                 rel.getSecondPrevRel() );
             if ( prevRel == null )
             {
@@ -817,17 +825,17 @@ class WriteTransaction extends XaTransaction
             }
             else
             {
-                throw new InvalidRecordException( prevRel + " don't match " + 
+                throw new InvalidRecordException( prevRel + " don't match " +
                     rel );
             }
         }
         // update second node next
         if ( rel.getSecondNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            Relationship lockableRel = new LockableRelationship( 
+            Relationship lockableRel = new LockableRelationship(
                 rel.getSecondNextRel() );
             getWriteLock( lockableRel );
-            RelationshipRecord nextRel = getRelationshipRecord( 
+            RelationshipRecord nextRel = getRelationshipRecord(
                 rel.getSecondNextRel() );
             if ( nextRel == null )
             {
@@ -845,7 +853,7 @@ class WriteTransaction extends XaTransaction
             }
             else
             {
-                throw new InvalidRecordException( nextRel + " don't match " + 
+                throw new InvalidRecordException( nextRel + " don't match " +
                     rel );
             }
         }
@@ -862,59 +870,20 @@ class WriteTransaction extends XaTransaction
         NodeRecord nodeRecord = getNodeRecord( nodeId );
         if ( nodeRecord != null && nodeRecord.isCreated() )
         {
-            return new RelationshipChainPosition( 
+            return new RelationshipChainPosition(
                   Record.NO_NEXT_RELATIONSHIP.intValue() );
         }
         nodeRecord = getNodeStore().getRecord( nodeId );
         long nextRel = nodeRecord.getNextRel();
         return new RelationshipChainPosition( nextRel );
     }
-    
-    public Iterable<RelationshipData> getMoreRelationships( long nodeId,
+
+    public Pair<Iterable<RelationshipRecord>, Iterable<RelationshipRecord>> getMoreRelationships( long nodeId,
         RelationshipChainPosition position )
     {
-        long nextRel = position.getNextRecord();
-        List<RelationshipData> rels = new ArrayList<RelationshipData>();
-        for ( int i = 0; i < getRelGrabSize() && 
-            nextRel != Record.NO_NEXT_RELATIONSHIP.intValue(); i++ )
-        {
-            RelationshipRecord relRecord = getRelationshipStore().getChainRecord( nextRel );
-            if ( relRecord == null )
-            {
-                // return what we got so far
-                position.setNextRecord( Record.NO_NEXT_RELATIONSHIP.intValue() );
-                return rels;
-            }
-            long firstNode = relRecord.getFirstNode();
-            long secondNode = relRecord.getSecondNode();
-            if ( relRecord.inUse() ) // && !relRecord.isCreated() )
-            {
-                rels.add( new RelationshipData( relRecord.getId(), firstNode, 
-                    secondNode, relRecord.getType() ) );
-            }
-            else
-            {
-                i--;
-            }
-            if ( firstNode == nodeId )
-            {
-                nextRel = relRecord.getFirstNextRel();
-            }
-            else if ( secondNode == nodeId )
-            {
-                nextRel = relRecord.getSecondNextRel();
-            }
-            else
-            {
-                throw new InvalidRecordException( "Node[" + nodeId + 
-                        "] is neither firstNode[" + firstNode + 
-                        "] nor secondNode[" + secondNode + "] for Relationship[" + relRecord.getId() + "]" );
-            }
-        }
-        position.setNextRecord( nextRel );
-        return rels;
+        return ReadTransaction.getMoreRelationships( nodeId, position, getRelGrabSize(), getRelationshipStore() );
     }
-    
+
     private void updateNodes( RelationshipRecord rel )
     {
         if ( rel.getFirstPrevRel() == Record.NO_PREV_RELATIONSHIP.intValue() )
@@ -939,7 +908,7 @@ class WriteTransaction extends XaTransaction
         }
     }
 
-    void relRemoveProperty( long relId, long propertyId )
+    public void relRemoveProperty( long relId, long propertyId )
     {
         RelationshipRecord relRecord = getRelationshipRecord( relId );
         if ( relRecord == null )
@@ -959,7 +928,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !propRecord.inUse() )
         {
-            throw new IllegalStateException( "Unable to delete property[" + 
+            throw new IllegalStateException( "Unable to delete property[" +
                 propertyId + "] since it is already deleted." );
         }
         propRecord.setRelId( relId );
@@ -1009,10 +978,10 @@ class WriteTransaction extends XaTransaction
         }
     }
 
-    public ArrayMap<Integer,PropertyData> relGetProperties( long relId,
+    public ArrayMap<Integer,PropertyData> relLoadProperties( long relId,
             boolean light )
     {
-        ArrayMap<Integer,PropertyData> propertyMap = 
+        ArrayMap<Integer,PropertyData> propertyMap =
             new ArrayMap<Integer,PropertyData>( 9, false, true );
         RelationshipRecord relRecord = getRelationshipRecord( relId );
         if ( relRecord != null && relRecord.isCreated() )
@@ -1023,31 +992,31 @@ class WriteTransaction extends XaTransaction
         {
             if ( !relRecord.inUse() && !light )
             {
-                throw new IllegalStateException( "Relationship[" + relId + 
+                throw new IllegalStateException( "Relationship[" + relId +
                         "] has been deleted in this tx" );
             }
         }
         relRecord = getRelationshipStore().getRecord( relId );
         if ( !relRecord.inUse() )
         {
-            throw new InvalidRecordException( "Relationship[" + relId + 
+            throw new InvalidRecordException( "Relationship[" + relId +
                 "] not in use" );
         }
         long nextProp = relRecord.getNextProp();
         while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
         {
             PropertyRecord propRecord = getPropertyStore().getLightRecord( nextProp );
-            propertyMap.put( propRecord.getKeyIndexId(), 
-                new PropertyData( propRecord.getId(),                      
+            propertyMap.put( propRecord.getKeyIndexId(),
+                new PropertyData( propRecord.getId(),
                     propertyGetValueOrNull( propRecord ) ) );
             nextProp = propRecord.getNextProp();
         }
         return propertyMap;
     }
 
-    ArrayMap<Integer,PropertyData> nodeGetProperties( long nodeId, boolean light )
+    public ArrayMap<Integer,PropertyData> nodeLoadProperties( long nodeId, boolean light )
     {
-        ArrayMap<Integer,PropertyData> propertyMap = 
+        ArrayMap<Integer,PropertyData> propertyMap =
             new ArrayMap<Integer,PropertyData>( 9, false, true );
         NodeRecord nodeRecord = getNodeRecord( nodeId );
         if ( nodeRecord != null && nodeRecord.isCreated() )
@@ -1058,35 +1027,35 @@ class WriteTransaction extends XaTransaction
         {
             if ( !nodeRecord.inUse() && !light )
             {
-                throw new IllegalStateException( "Node[" + nodeId + 
+                throw new IllegalStateException( "Node[" + nodeId +
                         "] has been deleted in this tx" );
             }
         }
         nodeRecord = getNodeStore().getRecord( nodeId );
         if ( !nodeRecord.inUse() )
         {
-            throw new InvalidRecordException( "Node[" + nodeId + 
+            throw new InvalidRecordException( "Node[" + nodeId +
                 "] not in use" );
         }
-            
+
         long nextProp = nodeRecord.getNextProp();
         while ( nextProp != Record.NO_NEXT_PROPERTY.intValue() )
         {
             PropertyRecord propRecord = getPropertyStore().getLightRecord( nextProp );
-            propertyMap.put( propRecord.getKeyIndexId(), 
-                new PropertyData( propRecord.getId(), 
+            propertyMap.put( propRecord.getKeyIndexId(),
+                new PropertyData( propRecord.getId(),
                     propertyGetValueOrNull( propRecord ) ) );
             nextProp = propRecord.getNextProp();
         }
         return propertyMap;
     }
-    
+
     public Object propertyGetValueOrNull( PropertyRecord propertyRecord )
     {
         return propertyRecord.getType().getValue( propertyRecord, propertyRecord.isLight() ? null : getPropertyStore() );
     }
 
-    public Object propertyGetValue( long id )
+    public Object loadPropertyValue( long id )
     {
         PropertyRecord propertyRecord = getPropertyStore().getRecord( id );
         if ( propertyRecord.isLight() )
@@ -1096,7 +1065,7 @@ class WriteTransaction extends XaTransaction
         return propertyRecord.getType().getValue( propertyRecord, getPropertyStore() );
     }
 
-    void nodeRemoveProperty( long nodeId, long propertyId )
+    public void nodeRemoveProperty( long nodeId, long propertyId )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
         if ( nodeRecord == null )
@@ -1116,7 +1085,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !propRecord.inUse() )
         {
-            throw new IllegalStateException( "Unable to delete property[" + 
+            throw new IllegalStateException( "Unable to delete property[" +
                 propertyId + "] since it is already deleted." );
         }
         propRecord.setNodeId( nodeId );
@@ -1166,7 +1135,7 @@ class WriteTransaction extends XaTransaction
         }
     }
 
-    void relChangeProperty( long relId, long propertyId, Object value )
+    public void relChangeProperty( long relId, long propertyId, Object value )
     {
         RelationshipRecord relRecord = getRelationshipRecord( relId );
         if ( relRecord == null )
@@ -1186,7 +1155,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !propertyRecord.inUse() )
         {
-            throw new IllegalStateException( "Unable to change property[" + 
+            throw new IllegalStateException( "Unable to change property[" +
                 propertyId + "] since it is deleted." );
         }
         propertyRecord.setRelId( relId );
@@ -1219,7 +1188,7 @@ class WriteTransaction extends XaTransaction
         addPropertyRecord( propertyRecord );
     }
 
-    void nodeChangeProperty( long nodeId, long propertyId, Object value )
+    public void nodeChangeProperty( long nodeId, long propertyId, Object value )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
         if ( nodeRecord == null )
@@ -1239,7 +1208,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !propertyRecord.inUse() )
         {
-            throw new IllegalStateException( "Unable to change property[" + 
+            throw new IllegalStateException( "Unable to change property[" +
                 propertyId + "] since it is deleted." );
         }
         propertyRecord.setNodeId( nodeId );
@@ -1272,7 +1241,7 @@ class WriteTransaction extends XaTransaction
         addPropertyRecord( propertyRecord );
     }
 
-    void relAddProperty( long relId, long propertyId, PropertyIndex index,
+    public void relAddProperty( long relId, long propertyId, PropertyIndex index,
         Object value )
     {
         RelationshipRecord relRecord = getRelationshipRecord( relId );
@@ -1292,7 +1261,7 @@ class WriteTransaction extends XaTransaction
         propertyRecord.setRelId( relId );
         if ( relRecord.getNextProp() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            PropertyRecord prevProp = getPropertyRecord( 
+            PropertyRecord prevProp = getPropertyRecord(
                 relRecord.getNextProp() );
             if ( prevProp == null )
             {
@@ -1312,7 +1281,7 @@ class WriteTransaction extends XaTransaction
         addPropertyRecord( propertyRecord );
     }
 
-    void nodeAddProperty( long nodeId, long propertyId, PropertyIndex index,
+    public void nodeAddProperty( long nodeId, long propertyId, PropertyIndex index,
         Object value )
     {
         NodeRecord nodeRecord = getNodeRecord( nodeId );
@@ -1337,7 +1306,7 @@ class WriteTransaction extends XaTransaction
         getPropertyStore().encodeValue( propertyRecord, value );
         if ( nodeRecord.getNextProp() != Record.NO_NEXT_PROPERTY.intValue() )
         {
-            PropertyRecord prevProp = getPropertyRecord( 
+            PropertyRecord prevProp = getPropertyRecord(
                 nodeRecord.getNextProp() );
             if ( prevProp == null )
             {
@@ -1345,7 +1314,7 @@ class WriteTransaction extends XaTransaction
                     nodeRecord.getNextProp() );
                 addPropertyRecord( prevProp );
             }
-            assert prevProp.getPrevProp() == 
+            assert prevProp.getPrevProp() ==
                 Record.NO_PREVIOUS_PROPERTY.intValue();
             prevProp.setPrevProp( propertyId );
             propertyRecord.setNextProp( prevProp.getId() );
@@ -1356,8 +1325,7 @@ class WriteTransaction extends XaTransaction
         addPropertyRecord( propertyRecord );
     }
 
-    void relationshipCreate( long id, long firstNodeId, long secondNodeId,
-        int type )
+    public void relationshipCreate( long id, int type, long firstNodeId, long secondNodeId )
     {
         NodeRecord firstNode = getNodeRecord( firstNodeId );
         if ( firstNode == null )
@@ -1367,7 +1335,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !firstNode.inUse() )
         {
-            throw new IllegalStateException( "First node[" + firstNodeId + 
+            throw new IllegalStateException( "First node[" + firstNodeId +
                 "] is deleted and cannot be used to create a relationship" );
         }
         NodeRecord secondNode = getNodeRecord( secondNodeId );
@@ -1378,7 +1346,7 @@ class WriteTransaction extends XaTransaction
         }
         if ( !secondNode.inUse() )
         {
-            throw new IllegalStateException( "Second node[" + secondNodeId + 
+            throw new IllegalStateException( "Second node[" + secondNodeId +
                 "] is deleted and cannot be used to create a relationship" );
         }
         RelationshipRecord record = new RelationshipRecord( id, firstNodeId,
@@ -1389,7 +1357,7 @@ class WriteTransaction extends XaTransaction
         connectRelationship( firstNode, secondNode, record );
     }
 
-    private void connectRelationship( NodeRecord firstNode, 
+    private void connectRelationship( NodeRecord firstNode,
         NodeRecord secondNode, RelationshipRecord rel )
     {
         assert firstNode.getNextRel() != rel.getId();
@@ -1398,10 +1366,10 @@ class WriteTransaction extends XaTransaction
         rel.setSecondNextRel( secondNode.getNextRel() );
         if ( firstNode.getNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            Relationship lockableRel = new LockableRelationship( 
+            Relationship lockableRel = new LockableRelationship(
                 firstNode.getNextRel() );
             getWriteLock( lockableRel );
-            RelationshipRecord nextRel = getRelationshipRecord( 
+            RelationshipRecord nextRel = getRelationshipRecord(
                 firstNode.getNextRel() );
             if ( nextRel == null )
             {
@@ -1425,10 +1393,10 @@ class WriteTransaction extends XaTransaction
         }
         if ( secondNode.getNextRel() != Record.NO_NEXT_RELATIONSHIP.intValue() )
         {
-            Relationship lockableRel = new LockableRelationship( 
+            Relationship lockableRel = new LockableRelationship(
                 secondNode.getNextRel() );
             getWriteLock( lockableRel );
-            RelationshipRecord nextRel = getRelationshipRecord( 
+            RelationshipRecord nextRel = getRelationshipRecord(
                 secondNode.getNextRel() );
             if ( nextRel == null )
             {
@@ -1454,7 +1422,7 @@ class WriteTransaction extends XaTransaction
         secondNode.setNextRel( rel.getId() );
     }
 
-    void nodeCreate( long nodeId )
+    public void nodeCreate( long nodeId )
     {
         NodeRecord nodeRecord = new NodeRecord( nodeId );
         nodeRecord.setInUse( true );
@@ -1462,7 +1430,7 @@ class WriteTransaction extends XaTransaction
         addNodeRecord( nodeRecord );
     }
 
-    String getPropertyIndex( int id )
+    public String loadIndex( int id )
     {
         PropertyIndexStore indexStore = getPropertyStore().getIndexStore();
         PropertyIndexRecord index = getPropertyIndexRecord( id );
@@ -1477,13 +1445,13 @@ class WriteTransaction extends XaTransaction
         return indexStore.getStringFor( index );
     }
 
-    PropertyIndexData[] getPropertyIndexes( int count )
+    public PropertyIndexData[] loadPropertyIndexes( int count )
     {
         PropertyIndexStore indexStore = getPropertyStore().getIndexStore();
         return indexStore.getPropertyIndexes( count );
     }
 
-    void createPropertyIndex( int id, String key )
+    public void createPropertyIndex( String key, int id )
     {
         PropertyIndexRecord record = new PropertyIndexRecord( id );
         record.setInUse( true );
@@ -1494,7 +1462,7 @@ class WriteTransaction extends XaTransaction
         int length = key.length();
         char[] chars = new char[length];
         key.getChars( 0, length, chars, 0 );
-        Collection<DynamicRecord> keyRecords = 
+        Collection<DynamicRecord> keyRecords =
             propIndexStore.allocateKeyRecords( keyBlockId, chars );
         for ( DynamicRecord keyRecord : keyRecords )
         {
@@ -1503,7 +1471,7 @@ class WriteTransaction extends XaTransaction
         addPropertyIndexRecord( record );
     }
 
-    void relationshipTypeAdd( int id, String name )
+    public void createRelationshipType( int id, String name )
     {
         RelationshipTypeRecord record = new RelationshipTypeRecord( id );
         record.setInUse( true );
@@ -1513,7 +1481,7 @@ class WriteTransaction extends XaTransaction
         int length = name.length();
         char[] chars = new char[length];
         name.getChars( 0, length, chars, 0 );
-        Collection<DynamicRecord> typeNameRecords = 
+        Collection<DynamicRecord> typeNameRecords =
             getRelationshipTypeStore().allocateTypeNameRecords( blockId, chars );
         for ( DynamicRecord typeRecord : typeNameRecords )
         {
@@ -1543,6 +1511,7 @@ class WriteTransaction extends XaTransaction
             }
         }
 
+        @Override
         public boolean equals( Object o )
         {
             if ( o instanceof CommandSorter )
@@ -1552,6 +1521,7 @@ class WriteTransaction extends XaTransaction
             return false;
         }
 
+        @Override
         public int hashCode()
         {
             return 3217;
@@ -1692,6 +1662,7 @@ class WriteTransaction extends XaTransaction
             throw new UnsupportedOperationException( "Lockable rel" );
         }
 
+        @Override
         public boolean equals( Object o )
         {
             if ( !(o instanceof Relationship) )
@@ -1713,7 +1684,7 @@ class WriteTransaction extends XaTransaction
             return "Lockable relationship #" + this.getId();
         }
     }
-    
+
     public RelIdArray getCreatedNodes()
     {
         RelIdArray createdNodes = new RelIdArray();
@@ -1721,13 +1692,14 @@ class WriteTransaction extends XaTransaction
         {
             if ( record.isCreated() )
             {
-                createdNodes.add( record.getId() );
+                // TODO Direction doesn't matter... misuse of RelIdArray?
+                createdNodes.add( record.getId(), Direction.OUTGOING );
             }
         }
         return createdNodes;
     }
-    
-    public boolean nodeCreated( long nodeId )
+
+    public boolean isNodeCreated( long nodeId )
     {
         NodeRecord record = nodeRecords.get( nodeId );
         if ( record != null )
@@ -1737,7 +1709,7 @@ class WriteTransaction extends XaTransaction
         return false;
     }
 
-    public boolean relCreated( long relId )
+    public boolean isRelationshipCreated( long relId )
     {
         RelationshipRecord record = relRecords.get( relId );
         if ( record != null )
@@ -1755,5 +1727,52 @@ class WriteTransaction extends XaTransaction
             propRecord = getPropertyStore().getLightRecord( propertyId );
         }
         return propRecord.getKeyIndexId();
+    }
+
+    @Override
+    public XAResource getXAResource()
+    {
+        return xaConnection.getXaResource();
+    }
+
+    @Override
+    public void destroy()
+    {
+        xaConnection.destroy();
+    }
+
+    @Override
+    public void setXaConnection( XaConnection connection )
+    {
+        this.xaConnection = connection;
+    }
+
+    @Override
+    public long nodeAddProperty( long nodeId, PropertyIndex index, Object value )
+    {
+        long propertyId = neoStore.getPropertyStore().nextId();
+        nodeAddProperty( nodeId, propertyId, index, value );
+        return propertyId;
+    }
+
+    @Override
+    public long relAddProperty( long relId, PropertyIndex index, Object value )
+    {
+        long propertyId = neoStore.getPropertyStore().nextId();
+        relAddProperty( relId, propertyId, index, value );
+        return propertyId;
+    }
+
+    @Override
+    public RelationshipTypeData[] loadRelationshipTypes()
+    {
+        RelationshipTypeData relTypeData[] = neoStore.getRelationshipTypeStore().getRelationshipTypes();;
+        RelationshipTypeData rawRelTypeData[] = new RelationshipTypeData[relTypeData.length];
+        for ( int i = 0; i < relTypeData.length; i++ )
+        {
+            rawRelTypeData[i] = new RelationshipTypeData(
+                relTypeData[i].getId(), relTypeData[i].getName() );
+        }
+        return rawRelTypeData;
     }
 }
