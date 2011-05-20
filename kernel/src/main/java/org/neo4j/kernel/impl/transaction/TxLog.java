@@ -187,7 +187,7 @@ public class TxLog
     {
         assertNotNull( globalId, "global id" );
         logBuffer.put( MARK_COMMIT ).put( (byte) globalId.length ).put( globalId );
-        logBuffer.force();
+//        logBuffer.force();
         recordCount++;
     }
 
