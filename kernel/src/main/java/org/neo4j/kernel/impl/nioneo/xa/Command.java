@@ -274,6 +274,16 @@ abstract class Command extends XaCommand
             this.store = store;
         }
 
+        long getFirstNode()
+        {
+            return record.getFirstNode();
+        }
+
+        long getSecondNode()
+        {
+            return record.getSecondNode();
+        }
+
         @Override
         public void execute()
         {

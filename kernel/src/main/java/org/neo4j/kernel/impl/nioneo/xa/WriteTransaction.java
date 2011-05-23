@@ -505,6 +505,8 @@ class WriteTransaction extends XaTransaction
             {
                 command.execute();
                 removeRelationshipFromCache( command.getKey() );
+                removeNodeFromCache( command.getFirstNode() );
+                removeNodeFromCache( command.getSecondNode() );
             }
             // nodes
             java.util.Collections.sort( nodeCommands, sorter );
