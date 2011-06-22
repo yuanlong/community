@@ -159,19 +159,7 @@ public class LuceneDataSource extends LogBackedXaDataSource
         this.indexStore = (IndexStore) params.get( IndexStore.class );
         this.providerStore = newIndexStore( storeDir );
         this.typeCache = new IndexTypeCache( indexStore );
-        boolean isReadOnly = false;
-        if ( params.containsKey( "read_only" ) )
-        {
-            Object readOnly = params.get( "read_only" );
-            if ( readOnly instanceof Boolean )
-            {
-                isReadOnly = (Boolean) readOnly;
-            }
-            else
-            {
-                isReadOnly = Boolean.parseBoolean( (String) readOnly );
-            }
-        }
+        boolean isReadOnly = Boolean.parseBoolean( (String) params.get( "read_only" ) );
                 
         nodeEntityType = new EntityType()
         {
@@ -531,12 +519,12 @@ public class LuceneDataSource extends LogBackedXaDataSource
         closeWriter( identifier );
         deleteFileOrDirectory( getFileDirectory( baseStorePath, identifier ) );
         invalidateCache( identifier );
-        boolean removeFromIndexStore = !recovery || (recovery &&
-                indexStore.has( identifier.entityType.getType(), identifier.indexName ));
-        if ( removeFromIndexStore )
-        {
-            indexStore.remove( identifier.entityType.getType(), identifier.indexName );
-        }
+//        boolean removeFromIndexStore = !recovery || (recovery &&
+//                indexStore.has( identifier.entityType.getType(), identifier.indexName ));
+//        if ( removeFromIndexStore )
+//        {
+//            indexStore.remove( identifier.entityType.getType(), identifier.indexName );
+//        }
         typeCache.invalidate( identifier );
         synchronized ( indexes )
         {

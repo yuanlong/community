@@ -31,13 +31,16 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.graphdb.index.AutoIndexer;
 import org.neo4j.graphdb.index.Index;
+import org.neo4j.graphdb.index.IndexHits;
 import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexManager;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.collection.MapUtil;
+import org.neo4j.kernel.impl.index.IndexConfigDataSource;
+import org.neo4j.kernel.impl.index.IndexConfigDataSource.IndexConfigConnection;
+import org.neo4j.kernel.impl.index.IndexConnectionBroker;
 import org.neo4j.kernel.impl.index.IndexStore;
-import org.neo4j.kernel.impl.index.IndexXaConnection;
 import org.neo4j.kernel.impl.transaction.xaframework.XaDataSource;
 
 class IndexManagerImpl implements IndexManager
@@ -48,14 +51,25 @@ class IndexManagerImpl implements IndexManager
     private final EmbeddedGraphDbImpl graphDbImpl;
     private final AutoIndexer<Node> nodeAutoIndexer;
     private final AutoIndexer<Relationship> relAutoIndexer;
+    private final IndexConnectionBroker<IndexConfigConnection> indexConfigConnectionBroker;
 
-
-    IndexManagerImpl( EmbeddedGraphDbImpl graphDbImpl, IndexStore indexStore )
+    IndexManagerImpl( final EmbeddedGraphDbImpl graphDbImpl, IndexStore indexStore )
     {
         this.graphDbImpl = graphDbImpl;
         this.indexStore = indexStore;
         this.nodeAutoIndexer = new NodeAutoIndexerImpl( graphDbImpl );
         this.relAutoIndexer = new RelationshipAutoIndexerImpl( graphDbImpl );
+        this.indexConfigConnectionBroker = new IndexConnectionBroker<IndexConfigConnection>(
+                graphDbImpl.getConfig().getTxModule().getTxManager() )
+        {
+            @Override
+            protected IndexConfigConnection newConnection()
+            {
+                XaDataSource dataSource = graphDbImpl.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource(
+                        IndexConfigDataSource.DATA_SOURCE_NAME );
+                return ((IndexConfigDataSource)dataSource).getXaConnection();
+            }
+        };
     }
 
     private IndexImplementation getIndexProvider( String provider )
@@ -178,33 +192,38 @@ class IndexManagerImpl implements IndexManager
                 indexName, suppliedConfig, graphDbImpl.getConfig().getParams() );
         if ( result.other() )
         {
-            IndexCreatorThread creator = new IndexCreatorThread( cls, indexName, result.first() );
-            creator.start();
-            try
-            {
-                creator.join();
-                if ( creator.exception != null )
-                {
-                    throw new TransactionFailureException( "Index creation failed for " + indexName +
-                            ", " + result.first(), creator.exception );
-                }
-            }
-            catch ( InterruptedException e )
-            {
-                Thread.interrupted();
-            }
+            singleOperationInTx( cls, indexName, new CreatorThread( cls, indexName, result.first() ) );
         }
         return result.first();
     }
 
-    private class IndexCreatorThread extends Thread
+    private void singleOperationInTx( Class<? extends PropertyContainer> cls, String indexName,
+            SingleOperationThread operation )
     {
-        private final String indexName;
-        private final Map<String, String> config;
-        private Exception exception;
-        private final Class<? extends PropertyContainer> cls;
+        operation.start();
+        try
+        {
+            operation.join();
+            if ( operation.exception != null )
+            {
+                throw new TransactionFailureException( "Index " + operation.getType() +
+                        " failed for " + indexName, operation.exception );
+            }
+        }
+        catch ( InterruptedException e )
+        {
+            Thread.interrupted();
+        }
+    }
 
-        IndexCreatorThread( Class<? extends PropertyContainer> cls, String indexName,
+    private abstract class SingleOperationThread extends Thread
+    {
+        protected final String indexName;
+        protected final Map<String, String> config;
+        protected final Class<? extends PropertyContainer> cls;
+        private Exception exception;
+
+        SingleOperationThread( Class<? extends PropertyContainer> cls, String indexName,
                 Map<String, String> config )
         {
             this.cls = cls;
@@ -215,16 +234,15 @@ class IndexManagerImpl implements IndexManager
         @Override
         public void run()
         {
-            String provider = config.get( PROVIDER );
-            String dataSourceName = getIndexProvider( provider ).getDataSourceName();
-            XaDataSource dataSource = graphDbImpl.getConfig().getTxModule().getXaDataSourceManager().getXaDataSource( dataSourceName );
-            IndexXaConnection connection = (IndexXaConnection) dataSource.getXaConnection();
+            XaDataSource dataSource = graphDbImpl.getConfig().getTxModule().getXaDataSourceManager()
+                    .getXaDataSource( IndexConfigDataSource.DATA_SOURCE_NAME );
+            IndexConfigConnection connection = (IndexConfigConnection) dataSource.getXaConnection();
             Transaction tx = graphDbImpl.beginTx();
             try
             {
                 javax.transaction.Transaction javaxTx = graphDbImpl.getConfig().getTxModule().getTxManager().getTransaction();
                 javaxTx.enlistResource( connection.getXaResource() );
-                connection.createIndex( cls, indexName, config );
+                doOperation( connection );
                 tx.success();
             }
             catch ( Exception e )
@@ -236,6 +254,51 @@ class IndexManagerImpl implements IndexManager
                 tx.finish();
             }
         }
+        
+        protected abstract String getType();
+
+        protected abstract void doOperation( IndexConfigConnection connection );
+    }
+    
+    private class CreatorThread extends SingleOperationThread
+    {
+        CreatorThread( Class<? extends PropertyContainer> cls, String indexName, Map<String, String> config )
+        {
+            super( cls, indexName, config );
+        }
+
+        @Override
+        protected void doOperation( IndexConfigConnection connection )
+        {
+            connection.createIndex( cls, indexName, config );
+        }
+        
+        @Override
+        protected String getType()
+        {
+            return "creation";
+        }
+    }
+    
+    private class SetConfigurationThread extends SingleOperationThread
+    {
+        SetConfigurationThread( Class<? extends PropertyContainer> cls, String indexName,
+                Map<String, String> config )
+        {
+            super( cls, indexName, config );
+        }
+
+        @Override
+        protected void doOperation( IndexConfigConnection connection )
+        {
+            connection.changeConfig( cls, indexName, config );
+        }
+        
+        @Override
+        protected String getType()
+        {
+            return "config change";
+        }
     }
 
     public boolean existsForNodes( String indexName )
@@ -243,17 +306,27 @@ class IndexManagerImpl implements IndexManager
         return indexStore.get( Node.class, indexName ) != null;
     }
 
+    private Index<Node> wrapNodeIndex( Index<Node> actualIndex )
+    {
+        return new WrappedIndex<Node>( actualIndex );
+    }
+    
+    private RelationshipIndex wrapRelationshipIndex( RelationshipIndex actualIndex )
+    {
+        return new WrappedRelationshipIndex( actualIndex );
+    }
+    
     public Index<Node> forNodes( String indexName )
     {
         Map<String, String> config = getOrCreateIndexConfig( Node.class, indexName, null );
-        return getIndexProvider( config.get( PROVIDER ) ).nodeIndex( indexName, config );
+        return wrapNodeIndex( getIndexProvider( config.get( PROVIDER ) ).nodeIndex( indexName, config ) );
     }
 
     public Index<Node> forNodes( String indexName, Map<String, String> customConfiguration )
     {
         Map<String, String> config = getOrCreateIndexConfig( Node.class, indexName,
                 customConfiguration );
-        return getIndexProvider( config.get( PROVIDER ) ).nodeIndex( indexName, config );
+        return wrapNodeIndex( getIndexProvider( config.get( PROVIDER ) ).nodeIndex( indexName, config ) );
     }
 
     public String[] nodeIndexNames()
@@ -269,8 +342,8 @@ class IndexManagerImpl implements IndexManager
     public RelationshipIndex forRelationships( String indexName )
     {
         Map<String, String> config = getOrCreateIndexConfig( Relationship.class, indexName, null );
-        return getIndexProvider( config.get( PROVIDER ) ).relationshipIndex( indexName,
-                config );
+        return wrapRelationshipIndex(
+                getIndexProvider( config.get( PROVIDER ) ).relationshipIndex( indexName, config ) );
     }
 
     public RelationshipIndex forRelationships( String indexName,
@@ -278,8 +351,8 @@ class IndexManagerImpl implements IndexManager
     {
         Map<String, String> config = getOrCreateIndexConfig( Relationship.class, indexName,
                 customConfiguration );
-        return getIndexProvider( config.get( PROVIDER ) ).relationshipIndex( indexName,
-                config );
+        return wrapRelationshipIndex(
+                getIndexProvider( config.get( PROVIDER ) ).relationshipIndex( indexName, config ) );
     }
 
     public String[] relationshipIndexNames()
@@ -303,7 +376,8 @@ class IndexManagerImpl implements IndexManager
         assertLegalConfigKey( key );
         Map<String, String> config = getMutableConfig( index );
         String oldValue = config.put( key, value );
-        indexStore.set( index.getEntityType(), index.getName(), config );
+        singleOperationInTx( index.getEntityType(), index.getName(), new SetConfigurationThread(
+                index.getEntityType(), index.getName(), config ) );
         return oldValue;
     }
 
@@ -327,7 +401,8 @@ class IndexManagerImpl implements IndexManager
         String value = config.remove( key );
         if ( value != null )
         {
-            indexStore.set( index.getEntityType(), index.getName(), config );
+            singleOperationInTx( index.getEntityType(), index.getName(), new SetConfigurationThread(
+                    index.getEntityType(), index.getName(), config ) );
         }
         return value;
     }
@@ -340,5 +415,105 @@ class IndexManagerImpl implements IndexManager
     public AutoIndexer<Relationship> getRelationshipAutoIndexer()
     {
         return relAutoIndexer;
+    }
+    
+    private class WrappedIndex<T extends PropertyContainer> implements Index<T>
+    {
+        protected final Index<T> actual;
+
+        WrappedIndex( Index<T> actual )
+        {
+            this.actual = actual;
+        }
+        
+        @Override
+        public String getName()
+        {
+            return actual.getName();
+        }
+
+        @Override
+        public Class<T> getEntityType()
+        {
+            return actual.getEntityType();
+        }
+
+        @Override
+        public void add( T entity, String key, Object value )
+        {
+            actual.add( entity, key, value );
+        }
+
+        @Override
+        public void remove( T entity, String key, Object value )
+        {
+            actual.remove( entity, key, value );
+        }
+
+        @Override
+        public void remove( T entity, String key )
+        {
+            actual.remove( entity, key );
+        }
+
+        @Override
+        public void remove( T entity )
+        {
+            actual.remove( entity );
+        }
+
+        @Override
+        public void delete()
+        {
+            actual.delete();
+            indexConfigConnectionBroker.acquireResourceConnection().deleIndex( getEntityType(), getName() );
+        }
+
+        @Override
+        public IndexHits<T> get( String key, Object value )
+        {
+            return actual.get( key, value );
+        }
+
+        @Override
+        public IndexHits<T> query( String key, Object queryOrQueryObject )
+        {
+            return actual.query( key, queryOrQueryObject );
+        }
+
+        @Override
+        public IndexHits<T> query( Object queryOrQueryObject )
+        {
+            return actual.query( queryOrQueryObject );
+        }
+    }
+    
+    private class WrappedRelationshipIndex extends WrappedIndex<Relationship> implements RelationshipIndex
+    {
+        WrappedRelationshipIndex( RelationshipIndex actual )
+        {
+            super( actual );
+        }
+
+        @Override
+        public IndexHits<Relationship> get( String key, Object valueOrNull, Node startNodeOrNull,
+                Node endNodeOrNull )
+        {
+            return ((RelationshipIndex)actual).get( key, valueOrNull, startNodeOrNull, endNodeOrNull );
+        }
+
+        @Override
+        public IndexHits<Relationship> query( String key, Object queryOrQueryObjectOrNull,
+                Node startNodeOrNull, Node endNodeOrNull )
+        {
+            return ((RelationshipIndex)actual).query( key, queryOrQueryObjectOrNull, startNodeOrNull, endNodeOrNull );
+        }
+
+        @Override
+        public IndexHits<Relationship> query( Object queryOrQueryObjectOrNull,
+                Node startNodeOrNull, Node endNodeOrNull )
+        {
+            return ((RelationshipIndex)actual).query( queryOrQueryObjectOrNull, startNodeOrNull, endNodeOrNull );
+        }
     }
 }

@@ -38,6 +38,7 @@ import org.neo4j.graphdb.TransactionFailureException;
 import org.neo4j.helpers.Service;
 import org.neo4j.helpers.UTF8;
 import org.neo4j.kernel.impl.core.LockReleaser;
+import org.neo4j.kernel.impl.index.IndexConfigDataSource;
 import org.neo4j.kernel.impl.nioneo.xa.NioNeoDbPersistenceSource;
 import org.neo4j.kernel.impl.transaction.LockManager;
 import org.neo4j.kernel.impl.transaction.TxModule;
@@ -61,6 +62,7 @@ class GraphDbInstance
     private final Config config;
 
     private NioNeoDbPersistenceSource persistenceSource = null;
+    private IndexConfigDataSource indexConfigDataSource;
 
     public Config getConfig()
     {
@@ -157,11 +159,11 @@ class GraphDbInstance
         config.getGraphDbModule().init();
 
         kernelExtensionLoader.initializeIndexProviders();
+        registerIndexConfigDataSource();
 
         config.getTxModule().start();
         config.getPersistenceModule().start( config.getTxModule().getTxManager(),
- persistenceSource,
-                config.getSyncHookFactory(), config.getLockReleaser() );
+                persistenceSource, config.getSyncHookFactory(), config.getLockReleaser() );
         persistenceSource.start( config.getTxModule().getXaDataSourceManager() );
         config.getIdGeneratorModule().start();
         config.getGraphDbModule().start( config.getLockReleaser(),
@@ -200,6 +202,13 @@ class GraphDbInstance
         logger.flush();
         started = true;
         return Collections.unmodifiableMap( params );
+    }
+
+    private void registerIndexConfigDataSource()
+    {
+        indexConfigDataSource = (IndexConfigDataSource) config.getTxModule().registerDataSource(
+                IndexConfigDataSource.DATA_SOURCE_NAME, IndexConfigDataSource.class.getName(),
+                IndexConfigDataSource.BRANCH_ID, config.getParams() );
     }
 
     private static Map<Object, Object> subset( Map<Object, Object> source, String... keys )
@@ -288,6 +297,7 @@ class GraphDbInstance
     {
         if ( started )
         {
+            indexConfigDataSource.close();
             config.getGraphDbModule().stop();
             config.getIdGeneratorModule().stop();
             persistenceSource.stop();
