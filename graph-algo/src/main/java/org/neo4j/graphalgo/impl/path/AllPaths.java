@@ -44,7 +44,7 @@ public class AllPaths implements PathFinder<Path>
 
     public Iterable<Path> findAllPaths( Node start, final Node end )
     {
-        return traversal().expand( expander ).depthFirst()
+        return traversal().expand( expander ).depthFirst().uniqueness( uniqueness() )
                 .evaluator( toDepth( maxDepth ) ).evaluator( returnWhereEndNodeIs( end ) )
                 .traverse( start );
     }
