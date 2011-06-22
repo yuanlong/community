@@ -23,7 +23,7 @@ import static org.neo4j.graphdb.traversal.Evaluation.EXCLUDE_AND_CONTINUE;
 import static org.neo4j.graphdb.traversal.Evaluation.INCLUDE_AND_CONTINUE;
 import static org.neo4j.graphdb.traversal.Evaluation.INCLUDE_AND_PRUNE;
 import static org.neo4j.graphdb.traversal.Evaluators.lastRelationshipTypeIs;
-import static org.neo4j.kernel.Traversal.description;
+import static org.neo4j.kernel.Traversal.traversal;
 
 import org.junit.Test;
 import org.neo4j.graphdb.Node;
@@ -52,11 +52,11 @@ public class TestEvaluators extends AbstractTestBase
                 "a B f", "f C g" );
         
         Node a = getNodeWithName( "a" );
-        expectPaths( description().evaluator( lastRelationshipTypeIs(
+        expectPaths( traversal().evaluator( lastRelationshipTypeIs(
                 INCLUDE_AND_PRUNE, EXCLUDE_AND_CONTINUE, Types.C ) ).traverse( a ),
                 "a,b,c,d,e", "a,f,g", "a,b,h" );
 
-        expectPaths( description().evaluator( lastRelationshipTypeIs(
+        expectPaths( traversal().evaluator( lastRelationshipTypeIs(
                 INCLUDE_AND_CONTINUE, EXCLUDE_AND_CONTINUE, Types.C ) ).traverse( a ),
                 "a,b,c,d,e", "a,f,g", "a,b,h", "a,b,h,i,k" );
     }

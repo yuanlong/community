@@ -50,6 +50,7 @@ import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.kernel.Traversal;
+import org.neo4j.kernel.impl.util.SingleNodePath;
 import org.neo4j.server.database.Database;
 import org.neo4j.server.database.DatabaseBlockedException;
 import org.neo4j.server.rest.domain.EndNodeNotFoundException;
@@ -534,7 +535,7 @@ public class DatabaseActions
                 expander = expander.add( DynamicRelationshipType.withName( type ), direction.internal );
             }
         }
-        return RelationshipRepresentation.list( expander.expand( node ) );
+        return RelationshipRepresentation.list( expander.expand( new SingleNodePath( node ) ) );
     }
 
     // Relationship properties

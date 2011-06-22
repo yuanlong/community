@@ -19,37 +19,32 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import static org.neo4j.graphdb.DynamicRelationshipType.withName;
 import static org.neo4j.graphdb.traversal.Evaluators.atDepth;
+import static org.neo4j.graphdb.traversal.Evaluators.returnWhereLastRelationshipTypeIs;
 import static org.neo4j.kernel.Traversal.traversal;
+import static org.neo4j.kernel.Uniqueness.RELATIONSHIP_PATH;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.RelationshipType;
 
-public class DepthOneTraversalTest extends AbstractTestBase
+public class TestPathDescription extends AbstractTestBase
 {
-    @BeforeClass
-    public static void createTheGraph()
-    {
-        createGraph( "0 ROOT 1", "1 KNOWS 2", "2 KNOWS 3", "2 KNOWS 4",
-                "4 KNOWS 5", "5 KNOWS 6", "3 KNOWS 1" );
-    }
-    
-    private void shouldGetBothNodesOnDepthOne( TraversalDescription description )
-    {
-        description = description.evaluator( atDepth( 1 ) );
-        expectNodes( description.traverse( getNodeWithName( "3" ) ), "1", "2" );
-    }
-    
     @Test
-    public void shouldGetBothNodesOnDepthOneForDepthFirst()
+    public void foaf() throws Exception
     {
-        shouldGetBothNodesOnDepthOne( traversal().depthFirst() );
-    }
-
-    @Test
-    public void shouldGetBothNodesOnDepthOneForBreadthFirst()
-    {
-        shouldGetBothNodesOnDepthOne( traversal().breadthFirst() );
+        createGraph( "a KNOWS b", "b KNOWS c", "b KNOWS d", "c KNOWS d", "a KNOWS e", "e KNOWS b",
+                "e KNOWS f", "f KNOWS c", "f MARRIED_TO g", "b MARRIED_TO d" );
+        
+        Node a = getNodeWithName( "a" );
+        RelationshipType marriedTo = withName( "MARRIED_TO" );
+        for ( Path path : traversal().uniqueness( RELATIONSHIP_PATH )
+                .evaluator( returnWhereLastRelationshipTypeIs( marriedTo ) )
+                .evaluator( atDepth( 3 ) ).traverse( a ) )
+        {
+            System.out.println( path );
+        }
     }
 }

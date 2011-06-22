@@ -146,7 +146,7 @@ public class OldTraverserWrapper
     }
 
     private static final TraversalDescription BASE_DESCRIPTION =
-            Traversal.description().uniqueness( Uniqueness.NODE_GLOBAL );
+            Traversal.traversal().uniqueness( Uniqueness.NODE_GLOBAL );
 
     public static org.neo4j.graphdb.Traverser traverse( Node node, Order traversalOrder,
             StopEvaluator stopEvaluator,

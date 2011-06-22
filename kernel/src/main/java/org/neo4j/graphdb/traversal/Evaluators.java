@@ -19,9 +19,12 @@
  */
 package org.neo4j.graphdb.traversal;
 
+import static java.util.Arrays.asList;
+
 import java.util.HashSet;
 import java.util.Set;
 
+import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -231,5 +234,41 @@ public abstract class Evaluators
     {
         return lastRelationshipTypeIs( Evaluation.INCLUDE_AND_PRUNE, Evaluation.EXCLUDE_AND_CONTINUE,
                 type, orAnyOfTheseTypes );
+    }
+    
+    /**
+     * An {@link Evaluator} which will return {@code evaluationIfMatch} if {@link Path#endNode()}
+     * for a given path is any of {@code nodes}, else {@code evaluationIfNoMatch}.
+     * @param evaluationIfMatch the {@link Evaluation} to return if the {@link Path#endNode()}
+     * is any of the nodes in {@code nodes}.
+     * @param evaluationIfNoMatch the {@link Evaluation} to return if the {@link Path#endNode()}
+     * doesn't match any of the nodes in {@code nodes}.
+     * @param nodes a set of nodes to match to end nodes in paths.
+     * @return an {@link Evaluator} which will return {@code evaluationIfMatch} if
+     * {@link Path#endNode()} for a given path is any of {@code nodes},
+     * else {@code evaluationIfNoMatch}.
+     */
+    public static Evaluator endNodeIs( final Evaluation evaluationIfMatch,
+            final Evaluation evaluationIfNoMatch, Node... nodes )
+    {
+        final Set<Node> nodeSet = new HashSet<Node>( asList( nodes ) );
+        return new Evaluator()
+        {
+            @Override
+            public Evaluation evaluate( Path path )
+            {
+                return nodeSet.contains( path.endNode() ) ? evaluationIfMatch : evaluationIfNoMatch;
+            }
+        };
+    }
+    
+    public static Evaluator returnWhereEndNodeIs( Node... nodes )
+    {
+        return endNodeIs( Evaluation.INCLUDE_AND_CONTINUE, Evaluation.EXCLUDE_AND_CONTINUE, nodes );
+    }
+
+    public static Evaluator pruneWhereEndNodeIs( Node... nodes )
+    {
+        return endNodeIs( Evaluation.INCLUDE_AND_PRUNE, Evaluation.EXCLUDE_AND_CONTINUE, nodes );
     }
 }

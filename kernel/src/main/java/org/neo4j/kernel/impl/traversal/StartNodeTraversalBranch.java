@@ -26,10 +26,11 @@ import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
 class StartNodeTraversalBranch extends TraversalBranchImpl
 {
-    StartNodeTraversalBranch( TraverserIterator traverser, Node source,
+    StartNodeTraversalBranch( TraverserIterator traverser, TraversalBranch parent, Node source,
             RelationshipExpander expander )
     {
-        super( traverser, source, expander );
+        super( traverser, parent, source, expander );
+        traverser.okToProceedFirst( this );
     }
 
     @Override
@@ -37,15 +38,8 @@ class StartNodeTraversalBranch extends TraversalBranchImpl
     {
         if ( !hasExpandedRelationships() )
         {
-            if ( traverser.okToProceedFirst( this ) )
-            {
-                expandRelationshipsWithoutChecks();
-                return this;
-            }
-            else
-            {
-                return null;
-            }
+            expandRelationshipsWithoutChecks();
+            return this;
         }
         return super.next();
     }

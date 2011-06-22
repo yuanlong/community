@@ -40,7 +40,7 @@ import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
 
 /**
  * A factory for objects regarding traversal of the graph. F.ex. it has a
- * method {@link #description()} for creating a new
+ * method {@link #traversal()} for creating a new
  * {@link TraversalDescription}, methods for creating new
  * {@link TraversalBranch} instances and more.
  */
@@ -75,6 +75,17 @@ public class Traversal
         return new TraversalDescriptionImpl();
     }
 
+    /**
+     * More convenient name than {@link #description()} when using static imports.
+     * Does the same thing.
+     * 
+     * @see #description()
+     */
+    public static TraversalDescription traversal()
+    {
+        return new TraversalDescriptionImpl();
+    }
+    
     /**
      * Creates a new {@link RelationshipExpander} which is set to expand
      * relationships with {@code type} and {@code direction}.
@@ -516,5 +527,10 @@ public class Traversal
                 return false;
             }
         };
+    }
+    
+    public static PathDescription path()
+    {
+        return new PathDescription();
     }
 }

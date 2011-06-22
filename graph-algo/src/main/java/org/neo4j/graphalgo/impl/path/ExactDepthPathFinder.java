@@ -19,6 +19,9 @@
  */
 package org.neo4j.graphalgo.impl.path;
 
+import static org.neo4j.graphdb.traversal.Evaluators.atDepth;
+import static org.neo4j.kernel.Traversal.traversal;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -35,9 +38,7 @@ import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
-import org.neo4j.helpers.Predicate;
 import org.neo4j.helpers.collection.PrefetchingIterator;
-import org.neo4j.kernel.Traversal;
 import org.neo4j.kernel.Uniqueness;
 
 /**
@@ -85,8 +86,7 @@ public class ExactDepthPathFinder implements PathFinder<Path>
 
     private Iterator<Path> paths( final Node start, final Node end )
     {
-        TraversalDescription base = Traversal.description().uniqueness(
-                Uniqueness.RELATIONSHIP_PATH ).order(
+        TraversalDescription base = traversal().uniqueness( Uniqueness.RELATIONSHIP_PATH ).order(
                 new BranchOrderingPolicy()
                 {
                     public BranchSelector create( TraversalBranch startSource )
@@ -96,25 +96,9 @@ public class ExactDepthPathFinder implements PathFinder<Path>
                     }
                 } );
         final int firstHalf = onDepth / 2;
-        Traverser startTraverser = base.prune(
-                Traversal.pruneAfterDepth( firstHalf ) ).expand(
-                expander ).filter( new Predicate<Path>()
-        {
-            public boolean accept( Path item )
-            {
-                return item.length() == firstHalf;
-            }
-        } ).traverse( start );
+        Traverser startTraverser = base.evaluator( atDepth( firstHalf ) ).traverse( start );
         final int secondHalf = onDepth - firstHalf;
-        Traverser endTraverser = base.prune(
-                Traversal.pruneAfterDepth( secondHalf ) ).expand(
-                expander.reversed() ).filter( new Predicate<Path>()
-        {
-            public boolean accept( Path item )
-            {
-                return item.length() == secondHalf;
-            }
-        } ).traverse( end );
+        Traverser endTraverser = base.evaluator( atDepth( secondHalf ) ).traverse( end );
 
         final Iterator<Path> startIterator = startTraverser.iterator();
         final Iterator<Path> endIterator = endTraverser.iterator();

@@ -36,6 +36,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.helpers.collection.IterableWrapper;
@@ -224,7 +225,7 @@ public class ShortestPath implements PathFinder<Path>
     }
     
     // Two long-lived instances
-    protected class DirectionData extends PrefetchingIterator<Node>
+    protected class DirectionData extends PrefetchingIterator<Node> implements Path
     {
         private final Node startNode;
         private int currentDepth;
@@ -275,7 +276,7 @@ public class ShortestPath implements PathFinder<Path>
                 protected Iterator<Relationship> createNestedIterator( Node node )
                 {
                     lastParentTraverserNode = node;
-                    return expander.expand( node ).iterator();
+                    return expander.expand( DirectionData.this ).iterator();
                 }
             };
             this.currentDepth++;
@@ -352,6 +353,48 @@ public class ShortestPath implements PathFinder<Path>
                 }
             }
             return this.nextRelationships.hasNext() ? this.nextRelationships.next() : null;
+        }
+
+        @Override
+        public Node startNode()
+        {
+            return startNode;
+        }
+
+        @Override
+        public Node endNode()
+        {
+            return lastParentTraverserNode;
+        }
+
+        @Override
+        public Relationship lastRelationship()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterable<Relationship> relationships()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterable<Node> nodes()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int length()
+        {
+            return currentDepth;
+        }
+
+        @Override
+        public Iterator<PropertyContainer> iterator()
+        {
+            throw new UnsupportedOperationException();
         }
     }
     

@@ -201,14 +201,15 @@ public interface TraversalDescription
     TraversalDescription expand( RelationshipExpander expander );
 
     /**
-     * Traverse from {@code startNode} based on all the rules and behavior
+     * Traverse from a set of start nodes based on all the rules and behavior
      * in this description. A {@link Traverser} is returned which is
      * used to step through the graph and getting results back. The traversal
-     * is not guaranteed to start before the Traverser is used.
+     * is not guaranteed to start before the Traverser is used
      *
-     * @param startNode the {@link Node} to start the traversal from.
+     * @param startNode {@link Node} to start the traversal from.
+     * @param additionalStartNodes additional {@link Node} to start traversing from.
      * @return a {@link Traverser} used to step through the graph and to get
-     *         results from.
+     * results from.
      */
-    Traverser traverse( Node startNode );
+    Traverser traverse( Node startNode, Node... additionalStartNodes );
 }

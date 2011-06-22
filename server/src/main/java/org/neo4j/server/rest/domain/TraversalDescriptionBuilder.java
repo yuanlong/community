@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Map;
 
 import org.neo4j.graphdb.DynamicRelationshipType;
+import org.neo4j.graphdb.Expander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Traverser.Order;
 import org.neo4j.graphdb.traversal.TraversalDescription;
@@ -109,16 +110,18 @@ public class TraversalDescriptionBuilder
                 pairDescriptions = Arrays.asList( relationshipsDescription );
             }
             
+            Expander expander = Traversal.emptyExpander();
             for ( Object pairDescription : pairDescriptions )
             {
                 Map map = (Map) pairDescription;
                 String name = (String) map.get( "type" );
                 RelationshipType type = DynamicRelationshipType.withName( name );
                 String directionName = (String) map.get( "direction" );
-                result = directionName == null ? result.relationships( type ) :
-                        result.relationships( type, stringToEnum( directionName,
+                expander = directionName == null ? expander.add( type ) :
+                        expander.add( type, stringToEnum( directionName,
                                 RelationshipDirection.class, true ).internal );
             }
+            result = result.expand( expander );
         }
         return result;
     }

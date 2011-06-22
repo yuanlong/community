@@ -278,6 +278,7 @@ public abstract class AbstractTestBase
             for ( T item : items )
             {
                 String repr = representation.represent( item );
+                System.out.println( "got " + item + ", " + repr );
                 assertTrue( repr + " not expected ", expected.remove( repr ) );
             }
             tx.success();

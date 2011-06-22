@@ -19,6 +19,10 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Expander;
 import org.neo4j.graphdb.Node;
@@ -66,9 +70,17 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     /* (non-Javadoc)
      * @see org.neo4j.graphdb.traversal.TraversalDescription#traverse(org.neo4j.graphdb.Node)
      */
-    public Traverser traverse( Node startNode )
+    public Traverser traverse( Node startNode, Node... additionalStartNodes )
     {
-        return new TraverserImpl( this, startNode );
+        return new TraverserImpl( this, collectionOf( startNode, additionalStartNodes ) );
+    }
+
+    private <T> Collection<T> collectionOf( T first, T... rest )
+    {
+        Collection<T> result = new ArrayList<T>();
+        result.add( first );
+        result.addAll( Arrays.asList( rest ) );
+        return result;
     }
 
     /* (non-Javadoc)

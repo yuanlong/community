@@ -34,6 +34,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Expander;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
@@ -52,22 +53,21 @@ public abstract class StandardExpander implements Expander
     static abstract class StandardExpansion<T> implements Expansion<T>
     {
         final StandardExpander expander;
-        final Node start;
+        final Path path;
 
-        StandardExpansion( StandardExpander expander, Node start )
+        StandardExpansion( StandardExpander expander, Path path )
         {
             this.expander = expander;
-            this.start = start;
+            this.path = path;
         }
 
         String stringRepresentation( String nodesORrelationships )
         {
-            return "Expansion[" + start + ".expand( " + expander + " )."
+            return "Expansion[" + path + ".expand( " + expander + " )."
                    + nodesORrelationships + "()]";
         }
 
-        abstract StandardExpansion<T> createNew(
-                @SuppressWarnings( "hiding" ) StandardExpander expander );
+        abstract StandardExpansion<T> createNew( StandardExpander expander );
 
         public StandardExpansion<T> including( RelationshipType type )
         {
@@ -119,31 +119,31 @@ public abstract class StandardExpander implements Expander
 
         public boolean isEmpty()
         {
-            return !expander.doExpand( start ).hasNext();
+            return !expander.doExpand( path ).hasNext();
         }
 
         public StandardExpansion<Node> nodes()
         {
-            return new NodeExpansion( expander, start );
+            return new NodeExpansion( expander, path );
         }
 
         public StandardExpansion<Relationship> relationships()
         {
-            return new RelationsipExpansion( expander, start );
+            return new RelationsipExpansion( expander, path );
         }
 
         public StandardExpansion<Pair<Relationship, Node>> pairs()
         {
-            return new PairExpansion( expander, start );
+            return new PairExpansion( expander, path );
         }
     }
 
     private static final class RelationsipExpansion extends
             StandardExpansion<Relationship>
     {
-        RelationsipExpansion( StandardExpander expander, Node start )
+        RelationsipExpansion( StandardExpander expander, Path path )
         {
-            super( expander, start );
+            super( expander, path );
         }
 
         @Override
@@ -153,10 +153,9 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        StandardExpansion<Relationship> createNew(
-                @SuppressWarnings( "hiding" ) StandardExpander expander )
+        StandardExpansion<Relationship> createNew( StandardExpander expander )
         {
-            return new RelationsipExpansion( expander, start );
+            return new RelationsipExpansion( expander, path );
         }
 
         @Override
@@ -167,15 +166,15 @@ public abstract class StandardExpander implements Expander
 
         public Iterator<Relationship> iterator()
         {
-            return expander.doExpand( start );
+            return expander.doExpand( path );
         }
     }
 
     private static final class NodeExpansion extends StandardExpansion<Node>
     {
-        NodeExpansion( StandardExpander expander, Node start )
+        NodeExpansion( StandardExpander expander, Path path )
         {
-            super( expander, start );
+            super( expander, path );
         }
 
         @Override
@@ -185,10 +184,9 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        StandardExpansion<Node> createNew(
-                @SuppressWarnings( "hiding" ) StandardExpander expander )
+        StandardExpansion<Node> createNew( StandardExpander expander )
         {
-            return new NodeExpansion( expander, start );
+            return new NodeExpansion( expander, path );
         }
 
         @Override
@@ -199,13 +197,14 @@ public abstract class StandardExpander implements Expander
 
         public Iterator<Node> iterator()
         {
+            final Node node = path.endNode();
             return new IteratorWrapper<Node, Relationship>(
-                    expander.doExpand( start ) )
+                    expander.doExpand( path ) )
             {
                 @Override
                 protected Node underlyingObjectToObject( Relationship rel )
                 {
-                    return rel.getOtherNode( start );
+                    return rel.getOtherNode( node );
                 }
             };
         }
@@ -214,9 +213,9 @@ public abstract class StandardExpander implements Expander
     private static final class PairExpansion extends
             StandardExpansion<Pair<Relationship, Node>>
     {
-        PairExpansion( StandardExpander expander, Node start )
+        PairExpansion( StandardExpander expander, Path path )
         {
-            super( expander, start );
+            super( expander, path );
         }
 
         @Override
@@ -226,10 +225,9 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        StandardExpansion<Pair<Relationship, Node>> createNew(
-                @SuppressWarnings( "hiding" ) StandardExpander expander )
+        StandardExpansion<Pair<Relationship, Node>> createNew( StandardExpander expander )
         {
-            return new PairExpansion( expander, start );
+            return new PairExpansion( expander, path );
         }
 
         @Override
@@ -240,14 +238,15 @@ public abstract class StandardExpander implements Expander
 
         public Iterator<Pair<Relationship, Node>> iterator()
         {
+            final Node node = path.endNode();
             return new IteratorWrapper<Pair<Relationship, Node>, Relationship>(
-                    expander.doExpand( start ) )
+                    expander.doExpand( path ) )
             {
                 @Override
                 protected Pair<Relationship, Node> underlyingObjectToObject(
                         Relationship rel )
                 {
-                    return Pair.of( rel, rel.getOtherNode( start ) );
+                    return Pair.of( rel, rel.getOtherNode( node ) );
                 }
             };
         }
@@ -274,11 +273,12 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        Iterator<Relationship> doExpand( Node start )
+        Iterator<Relationship> doExpand( Path path )
         {
+            Node node = path.endNode();
             return direction == Direction.BOTH ?
-                    start.getRelationships().iterator() :
-                    start.getRelationships( direction ).iterator();
+                    node.getRelationships().iterator() :
+                    node.getRelationships( direction ).iterator();
         }
 
         @Override
@@ -414,10 +414,11 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        Iterator<Relationship> doExpand( final Node start )
+        Iterator<Relationship> doExpand( Path path )
         {
+            final Node node = path.endNode();
             return new FilteringIterator<Relationship>(
-                    start.getRelationships().iterator(),
+                    node.getRelationships().iterator(),
                     new Predicate<Relationship>()
                     {
                         public boolean accept( Relationship rel )
@@ -425,7 +426,7 @@ public abstract class StandardExpander implements Expander
                             Exclusion exclude = exclusion.get( rel.getType().name() );
                             exclude = ( exclude == null ) ? defaultExclusion
                                     : exclude;
-                            return exclude.accept( start, rel );
+                            return exclude.accept( node, rel );
                         }
                     } );
         }
@@ -516,16 +517,17 @@ public abstract class StandardExpander implements Expander
         }
         
         @Override
-        Iterator<Relationship> doExpand( final Node start )
+        Iterator<Relationship> doExpand( Path path )
         {
+            final Node node = path.endNode();
             if ( types.isEmpty() )
             {
-                return start.getRelationships().iterator();
+                return node.getRelationships().iterator();
             }
             else if ( types.size() == 1 )
             {
                 Entry<Direction, RelationshipType[]> entry = types.entrySet().iterator().next();
-                return start.getRelationships( entry.getKey(), entry.getValue() ).iterator();
+                return node.getRelationships( entry.getKey(), entry.getValue() ).iterator();
             }
             else
             {
@@ -534,7 +536,7 @@ public abstract class StandardExpander implements Expander
                     @Override
                     protected Iterator<Relationship> createNestedIterator( Entry<Direction, RelationshipType[]> item )
                     {
-                        return start.getRelationships( item.getKey(), item.getValue() ).iterator();
+                        return node.getRelationships( item.getKey(), item.getValue() ).iterator();
                     }
                 };
             }
@@ -600,16 +602,17 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        Iterator<Relationship> doExpand( final Node start )
+        Iterator<Relationship> doExpand( Path path )
         {
+            final Node node = path.endNode();
             return new FilteringIterator<Relationship>(
-                    expander.doExpand( start ), new Predicate<Relationship>()
+                    expander.doExpand( path ), new Predicate<Relationship>()
                     {
                         public boolean accept( Relationship item )
                         {
                             for ( Filter filter : filters )
                             {
-                                if ( filter.exclude( start, item ) )
+                                if ( filter.exclude( node, item ) )
                                     return false;
                             }
                             return true;
@@ -652,104 +655,6 @@ public abstract class StandardExpander implements Expander
         }
     }
 
-    private static final class TypeLimitingExpander extends StandardExpander
-    {
-        private final StandardExpander expander;
-        private final Map<String, Direction> exclusion;
-
-        TypeLimitingExpander( StandardExpander expander,
-                Map<String, Direction> exclusion )
-        {
-            this.expander = expander;
-            this.exclusion = exclusion;
-        }
-
-        @Override
-        void buildString( StringBuilder result )
-        {
-            result.append( "*" );
-            for ( Map.Entry<String, Direction> entry : exclusion.entrySet() )
-            {
-                result.append( ",!" );
-                if ( entry.getValue() != Direction.BOTH )
-                {
-                    result.append( entry.getValue().name() );
-                    result.append( ":" );
-                }
-                result.append( entry.getKey() );
-            }
-        }
-
-        @Override
-        public StandardExpander add( RelationshipType type, Direction direction )
-        {
-            Direction excluded = exclusion.get( type.name() );
-            final Map<String, Direction> newExclusion;
-            if ( excluded == null )
-            {
-                return this;
-            }
-            else if ( excluded == direction || direction == Direction.BOTH )
-            {
-                if ( exclusion.size() == 1 )
-                {
-                    return expander;
-                }
-                else
-                {
-                    newExclusion = new HashMap<String, Direction>( exclusion );
-                    newExclusion.remove( type.name() );
-                }
-            }
-            else
-            {
-                newExclusion = new HashMap<String, Direction>( exclusion );
-                newExclusion.put( type.name(), direction.reverse() );
-            }
-            return new TypeLimitingExpander( expander, newExclusion );
-        }
-
-        @Override
-        Iterator<Relationship> doExpand( final Node start )
-        {
-            return new FilteringIterator<Relationship>(
-                    start.getRelationships().iterator(),
-                    new Predicate<Relationship>()
-                    {
-                        public boolean accept( Relationship item )
-                        {
-                            Direction dir = exclusion.get( item.getType().name() );
-                            return !matchDirection( dir, start, item );
-                        }
-                    } );
-        }
-
-        @Override
-        public StandardExpander remove( RelationshipType type )
-        {
-            Direction excluded = exclusion.get( type.name() );
-            if ( excluded == Direction.BOTH )
-            {
-                return this;
-            }
-            Map<String, Direction> newExclusion = new HashMap<String, Direction>(
-                    exclusion );
-            newExclusion.put( type.name(), Direction.BOTH );
-            return new TypeLimitingExpander( expander, newExclusion );
-        }
-
-        @Override
-        public StandardExpander reversed()
-        {
-            Map<String, Direction> newExclusion = new HashMap<String, Direction>();
-            for ( Map.Entry<String, Direction> entry : exclusion.entrySet() )
-            {
-                newExclusion.put( entry.getKey(), entry.getValue().reverse() );
-            }
-            return new TypeLimitingExpander( expander, newExclusion );
-        }
-    }
-
     private static final class WrappingExpander extends StandardExpander
     {
         private static final String IMMUTABLE = "Immutable Expander ";
@@ -767,9 +672,9 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        Iterator<Relationship> doExpand( Node start )
+        Iterator<Relationship> doExpand( Path path )
         {
-            return expander.expand( start ).iterator();
+            return expander.expand( path ).iterator();
         }
 
         @Override
@@ -840,9 +745,9 @@ public abstract class StandardExpander implements Expander
         }
     }
 
-    public final Expansion<Relationship> expand( Node start )
+    public final Expansion<Relationship> expand( Path path )
     {
-        return new RelationsipExpansion( this, start );
+        return new RelationsipExpansion( this, path );
     }
 
     static <T> T[] append( T[] array, T item )
@@ -854,31 +759,6 @@ public abstract class StandardExpander implements Expander
         return result;
     }
 
-    private static <T> T[] extract( Class<T[]> type, T obj1, T obj2,
-            Object[] more, boolean odd )
-    {
-        if ( more.length % 2 != 0 )
-        {
-            throw new IllegalArgumentException();
-        }
-        Object[] target = (Object[]) Array.newInstance(
-                type.getComponentType(), ( more.length / 2 ) + 2 );
-        try
-        {
-            target[0] = obj1;
-            target[1] = obj2;
-            for ( int i = 2; i < target.length; i++ )
-            {
-                target[i] = more[( i - 2 ) * 2 + ( odd ? 1 : 0 )];
-            }
-        }
-        catch ( ArrayStoreException cast )
-        {
-            throw new IllegalArgumentException( cast );
-        }
-        return type.cast( target );
-    }
-
     static boolean matchDirection( Direction dir, Node start, Relationship rel )
     {
         switch ( dir )
@@ -887,11 +767,13 @@ public abstract class StandardExpander implements Expander
             return rel.getEndNode().equals( start );
         case OUTGOING:
             return rel.getStartNode().equals( start );
+        case BOTH:
+            return true;
         }
         return true;
     }
 
-    abstract Iterator<Relationship> doExpand( Node start );
+    abstract Iterator<Relationship> doExpand( Path path );
 
     @Override
     public final String toString()

@@ -40,6 +40,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.helpers.collection.PrefetchingIterator;
@@ -112,7 +113,7 @@ public class AStar implements PathFinder<WeightedPath>
         }
     }
 
-    private class Doer extends PrefetchingIterator<Node>
+    private class Doer extends PrefetchingIterator<Node> implements Path
     {
         private final Node end;
         private Node lastNode;
@@ -123,9 +124,11 @@ public class AStar implements PathFinder<WeightedPath>
                 new TreeMap<Double, Collection<Node>>();
         private final Map<Long, Long> cameFrom = new HashMap<Long, Long>();
         private final Map<Long, Data> score = new HashMap<Long, Data>();
+        private final Node start;
         
         Doer( Node start, Node end )
         {
+            this.start = start;
             this.end = end;
             
             Data data = new Data();
@@ -196,7 +199,7 @@ public class AStar implements PathFinder<WeightedPath>
 
         private void expand()
         {
-            for ( Relationship rel : expander.expand( this.lastNode ) )
+            for ( Relationship rel : expander.expand( this ) )
             {
                 Node node = rel.getOtherNode( this.lastNode );
                 if ( this.visitedNodes.contains( node.getId() ) )
@@ -228,6 +231,48 @@ public class AStar implements PathFinder<WeightedPath>
                     this.score.put( node.getId(), data );
                 }
             }
+        }
+
+        @Override
+        public Node startNode()
+        {
+            return start;
+        }
+
+        @Override
+        public Node endNode()
+        {
+            return lastNode;
+        }
+
+        @Override
+        public Relationship lastRelationship()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterable<Relationship> relationships()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterable<Node> nodes()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public int length()
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Iterator<PropertyContainer> iterator()
+        {
+            throw new UnsupportedOperationException();
         }
     }
 }

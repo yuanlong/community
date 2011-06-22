@@ -19,6 +19,10 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import static org.neo4j.helpers.collection.IteratorUtil.count;
+import static org.neo4j.kernel.Traversal.returnAcceptedByAny;
+import static org.neo4j.kernel.Traversal.traversal;
+
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
@@ -29,8 +33,6 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.helpers.Predicate;
-import org.neo4j.helpers.collection.IteratorUtil;
-import org.neo4j.kernel.Traversal;
 
 public class TestMultipleFilters extends AbstractTestBase
 {
@@ -83,11 +85,11 @@ public class TestMultipleFilters extends AbstractTestBase
         {
             public Evaluation evaluate( Path path )
             {
-                return Evaluation.ofIncludes( IteratorUtil.count( path.endNode().getRelationships( Direction.OUTGOING ) ) <= 2 );
+                return Evaluation.ofIncludes( count( path.endNode().getRelationships( Direction.OUTGOING ) ) <= 2 );
             }
         };
         
-        TraversalDescription description = Traversal.description().evaluator( mustBeConnectedToK );
+        TraversalDescription description = traversal().evaluator( mustBeConnectedToK );
         expectNodes( description.traverse( node( "a" ) ), "b", "c" );
         expectNodes( description.evaluator( mustNotHaveMoreThanTwoOutRels ).traverse( node( "a" ) ), "c" );
     }
@@ -99,10 +101,10 @@ public class TestMultipleFilters extends AbstractTestBase
         MustBeConnectedToNodeFilter mustBeConnectedToE = new MustBeConnectedToNodeFilter( getNodeWithName( "e" ) );
         
         // Nodes connected (OUTGOING) to c (which "a" is)
-        expectNodes( Traversal.description().evaluator( mustBeConnectedToC ).traverse( node( "a" ) ), "a" );
+        expectNodes( traversal().evaluator( mustBeConnectedToC ).traverse( node( "a" ) ), "a" );
         // Nodes connected (OUTGOING) to c AND e (which none is)
-        expectNodes( Traversal.description().evaluator( mustBeConnectedToC ).evaluator( mustBeConnectedToE ).traverse( node( "a" ) ) );
+        expectNodes( traversal().evaluator( mustBeConnectedToC ).evaluator( mustBeConnectedToE ).traverse( node( "a" ) ) );
         // Nodes connected (OUTGOING) to c OR e (which "a" and "b" is)
-        expectNodes( Traversal.description().filter( Traversal.returnAcceptedByAny( mustBeConnectedToC, mustBeConnectedToE ) ).traverse( node( "a" ) ), "a", "b" );
+        expectNodes( traversal().filter( returnAcceptedByAny( mustBeConnectedToC, mustBeConnectedToE ) ).traverse( node( "a" ) ), "a", "b" );
     }
 }

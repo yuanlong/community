@@ -19,10 +19,14 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.neo4j.graphdb.traversal.Evaluators.toDepth;
+import static org.neo4j.helpers.collection.IteratorUtil.count;
+import static org.neo4j.helpers.collection.IteratorUtil.lastOrNull;
+import static org.neo4j.kernel.Traversal.traversal;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -35,8 +39,6 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.helpers.collection.IteratorUtil;
-import org.neo4j.kernel.Traversal;
 
 public class TestMultiPruneEvaluators extends AbstractTestBase
 {
@@ -67,7 +69,7 @@ public class TestMultiPruneEvaluators extends AbstractTestBase
             }
         };
 
-        IteratorUtil.lastOrNull( Traversal.description().prune( evaluator ).traverse( node( "a" ) ) );
+        lastOrNull( traversal().prune( evaluator ).traverse( node( "a" ) ) );
         assertFalse( calledForStartPosition[0] );
     }
 
@@ -78,15 +80,15 @@ public class TestMultiPruneEvaluators extends AbstractTestBase
         {
             public Evaluation evaluate( Path path )
             {
-                return IteratorUtil.count( path.endNode().getRelationships( Direction.OUTGOING ).iterator() ) < 3 ?
+                return count( path.endNode().getRelationships( Direction.OUTGOING ).iterator() ) < 3 ?
                         Evaluation.INCLUDE_AND_PRUNE : Evaluation.INCLUDE_AND_CONTINUE;
             }
         };
 
-        TraversalDescription description = Traversal.description().evaluator( Evaluators.all() )
-                .evaluator( Evaluators.toDepth( 1 ) ).evaluator( lessThanThreeRels );
+        TraversalDescription description = traversal().evaluator( Evaluators.all() )
+                .evaluator( toDepth( 1 ) ).evaluator( lessThanThreeRels );
         Set<String> expectedNodes = new HashSet<String>(
-                Arrays.asList( "a", "b", "c", "d", "e" ) );
+                asList( "a", "b", "c", "d", "e" ) );
         for ( Path position : description.traverse( node( "a" ) ) )
         {
             String name = (String) position.endNode().getProperty( "name" );

@@ -335,7 +335,7 @@ public class TestShortestPath extends Neo4jAlgoTestCase
     }
 
     @Test
-    public void makeSureAMaxResultCountCanIsObeyed()
+    public void makeSureAMaxResultCountIsObeyed()
     {
         // Layout:
         //

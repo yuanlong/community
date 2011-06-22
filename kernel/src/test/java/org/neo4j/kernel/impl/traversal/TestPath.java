@@ -21,6 +21,8 @@ package org.neo4j.kernel.impl.traversal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.neo4j.graphdb.traversal.Evaluators.atDepth;
+import static org.neo4j.kernel.Traversal.traversal;
 
 import java.util.Iterator;
 
@@ -31,8 +33,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.kernel.Traversal;
 
 public class TestPath extends AbstractTestBase
 {
@@ -45,8 +45,7 @@ public class TestPath extends AbstractTestBase
     @Test
     public void testPathIterator()
     {
-        Path path = Traversal.description().evaluator( Evaluators.atDepth( 4 ) ).traverse(
-                node( "A" ) ).iterator().next();
+        Path path = traversal().evaluator( atDepth( 4 ) ).traverse( node( "A" ) ).iterator().next();
         
         assertPathIsCorrect( path );
     }

@@ -51,7 +51,7 @@ public class TraversalPath implements Path
             LinkedList<Node> nodesList = new LinkedList<Node>();
             LinkedList<Relationship> relationshipsList = new LinkedList<Relationship>();
             TraversalBranch stepper = branch;
-            while ( stepper != null )
+            while ( stepper.depth() >= 0 )
             {
                 nodesList.addFirst( stepper.node() );
                 Relationship relationship = stepper.relationship();

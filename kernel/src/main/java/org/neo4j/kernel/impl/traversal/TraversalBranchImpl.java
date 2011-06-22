@@ -23,13 +23,14 @@ import java.util.Iterator;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
-class TraversalBranchImpl implements TraversalBranch//, Path
+class TraversalBranchImpl implements TraversalBranch, Path
 {
     private static final Iterator<Relationship> EMPTY_ITERATOR = new Iterator<Relationship>()
     {
@@ -84,11 +85,11 @@ class TraversalBranchImpl implements TraversalBranch//, Path
     /*
      * For the start node expansion source
      */
-    TraversalBranchImpl( TraverserIterator traverser, Node source,
+    TraversalBranchImpl( TraverserIterator traverser, TraversalBranch parent, Node source,
             RelationshipExpander expander )
     {
         this.traverser = traverser;
-        this.parent = null;
+        this.parent = parent;
         this.source = source;
         this.howIGotHere = null;
         this.depth = 0;
@@ -109,7 +110,7 @@ class TraversalBranchImpl implements TraversalBranch//, Path
     
     protected void expandRelationshipsWithoutChecks()
     {
-        relationships = traverser.description.expander.expand( source ).iterator();
+        relationships = traverser.description.expander.expand( this ).iterator();
     }
 
     protected boolean hasExpandedRelationships()
@@ -189,38 +190,38 @@ class TraversalBranchImpl implements TraversalBranch//, Path
         return evaluation;
     }
 
-//    public Node startNode()
-//    {
-//        return ensurePathInstantiated().startNode();
-//    }
-//
-//    public Node endNode()
-//    {
-//        return source;
-//    }
-//
-//    public Relationship lastRelationship()
-//    {
-//        return howIGotHere;
-//    }
-//
-//    public Iterable<Relationship> relationships()
-//    {
-//        return ensurePathInstantiated().relationships();
-//    }
-//
-//    public Iterable<Node> nodes()
-//    {
-//        return ensurePathInstantiated().nodes();
-//    }
-//
-//    public int length()
-//    {
-//        return depth;
-//    }
-//
-//    public Iterator<PropertyContainer> iterator()
-//    {
-//        return ensurePathInstantiated().iterator();
-//    }
+    public Node startNode()
+    {
+        return ensurePathInstantiated().startNode();
+    }
+
+    public Node endNode()
+    {
+        return source;
+    }
+
+    public Relationship lastRelationship()
+    {
+        return howIGotHere;
+    }
+
+    public Iterable<Relationship> relationships()
+    {
+        return ensurePathInstantiated().relationships();
+    }
+
+    public Iterable<Node> nodes()
+    {
+        return ensurePathInstantiated().nodes();
+    }
+
+    public int length()
+    {
+        return depth;
+    }
+
+    public Iterator<PropertyContainer> iterator()
+    {
+        return ensurePathInstantiated().iterator();
+    }
 }

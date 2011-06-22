@@ -30,9 +30,11 @@ import java.util.TreeMap;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.helpers.Service;
+import org.neo4j.kernel.impl.util.SingleNodePath;
 import org.neo4j.shell.App;
 import org.neo4j.shell.AppCommandParser;
 import org.neo4j.shell.OptionDefinition;
@@ -230,8 +232,9 @@ public class Ls extends ReadOnlyGraphDatabaseApp
     {
         RelationshipExpander expander = toExpander( getServer().getDb(), direction, filterMap,
                 caseInsensitiveFilters, looseFilters );
+        Path nodeAsPath = new SingleNodePath( thing.asNode() );
         Map<String, Collection<Relationship>> relationships =
-                readAllRelationships( expander != null ? expander.expand( thing.asNode() ) : Collections.<Relationship>emptyList() );
+                readAllRelationships( expander != null ? expander.expand( nodeAsPath ) : Collections.<Relationship>emptyList() );
         Node node = thing.asNode();
         for ( Map.Entry<String, Collection<Relationship>> entry : relationships.entrySet() )
         {

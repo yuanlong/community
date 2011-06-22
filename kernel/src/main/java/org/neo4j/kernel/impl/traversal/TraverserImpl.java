@@ -19,12 +19,15 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFilter;
@@ -35,12 +38,12 @@ import org.neo4j.helpers.collection.PrefetchingIterator;
 class TraverserImpl implements Traverser
 {
     private final TraversalDescriptionImpl description;
-    private final Node startNode;
+    final Collection<Node> startNodes;
 
-    TraverserImpl( TraversalDescriptionImpl description, Node startNode )
+    TraverserImpl( TraversalDescriptionImpl description, Collection<Node> startNodes )
     {
         this.description = description;
-        this.startNode = startNode;
+        this.startNodes = startNodes;
     }
 
     public Iterator<Path> iterator()
@@ -93,29 +96,25 @@ class TraverserImpl implements Traverser
 
     class TraverserIterator extends PrefetchingIterator<Path>
     {
-        final UniquenessFilter uniquness;
+        final UniquenessFilter uniqueness;
         private final BranchSelector sourceSelector;
         final TraversalDescriptionImpl description;
-        final Node startNode;
 
         TraverserIterator()
         {
             this.description = TraverserImpl.this.description;
-            this.uniquness = description.uniqueness.create( description.uniquenessParameter );
-            this.startNode = TraverserImpl.this.startNode;
-            this.sourceSelector = description.branchSelector.create(
-                    new StartNodeTraversalBranch( this, startNode,
-                            description.expander ) );
+            this.uniqueness = description.uniqueness.create( description.uniquenessParameter );
+            this.sourceSelector = description.branchSelector.create( new AsOneStartBranch( this, startNodes ) );
         }
 
         boolean okToProceedFirst( TraversalBranch source )
         {
-            return this.uniquness.checkFirst( source );
+            return this.uniqueness.checkFirst( source );
         }
 
         boolean okToProceed( TraversalBranch source )
         {
-            return this.uniquness.check( source );
+            return this.uniqueness.check( source );
         }
 
         @Override
@@ -134,6 +133,89 @@ class TraverserImpl implements Traverser
                     return result.position();
                 }
             }
+        }
+    }
+    
+    private static class AsOneStartBranch implements TraversalBranch
+    {
+        private final TraverserIterator traverser;
+        private final Iterator<TraversalBranch> branches;
+        private int expanded;
+
+        AsOneStartBranch( TraverserIterator traverser, Collection<Node> nodes )
+        {
+            this.traverser = traverser;
+            this.branches = toBranches( nodes );
+        }
+        
+        private Iterator<TraversalBranch> toBranches( Collection<Node> nodes )
+        {
+            Collection<TraversalBranch> branches = new ArrayList<TraversalBranch>();
+            for ( Node node : nodes )
+            {
+                TraversalBranch branch = new StartNodeTraversalBranch( traverser, this, node,
+                        traverser.description.expander );
+                branches.add( branch );
+            }
+            return branches.iterator();
+        }
+
+        @Override
+        public TraversalBranch parent()
+        {
+            return null;
+        }
+
+        @Override
+        public Path position()
+        {
+            return null;
+        }
+
+        @Override
+        public int depth()
+        {
+            return -1;
+        }
+
+        @Override
+        public Node node()
+        {
+            return null;
+        }
+
+        @Override
+        public Relationship relationship()
+        {
+            return null;
+        }
+
+        @Override
+        public TraversalBranch next()
+        {
+            if ( branches.hasNext() )
+            {
+                expanded++;
+                return branches.next().next();
+            }
+            return null;
+        }
+
+        @Override
+        public int expanded()
+        {
+            return expanded;
+        }
+
+        @Override
+        public Evaluation evaluation()
+        {
+            return Evaluation.EXCLUDE_AND_CONTINUE;
+        }
+
+        @Override
+        public void initialize()
+        {
         }
     }
 }
