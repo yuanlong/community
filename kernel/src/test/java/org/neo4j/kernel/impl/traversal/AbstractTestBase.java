@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -315,6 +316,12 @@ public abstract class AbstractTestBase
     {
         expect( traverser, new NodePathRepresentation(
                 NAME_PROPERTY_REPRESENTATION ), expected );
+    }
+    
+    protected static void expectPath( Path path, String pathAsString )
+    {
+        expect( asList( path ), new NodePathRepresentation( NAME_PROPERTY_REPRESENTATION ),
+                pathAsString );
     }
 
 //    private static String relationshipRepresentation( Relationship relationship )
