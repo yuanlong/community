@@ -21,15 +21,14 @@ package org.neo4j.kernel.impl.traversal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.neo4j.graphdb.traversal.Evaluators.excludeStartPosition;
 import static org.neo4j.helpers.collection.IteratorUtil.count;
 import static org.neo4j.kernel.Traversal.traversal;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
-import org.neo4j.kernel.Traversal;
 import org.neo4j.kernel.Uniqueness;
 
 public class SmallestGraphEverTest extends AbstractTestBase
@@ -126,22 +125,14 @@ public class SmallestGraphEverTest extends AbstractTestBase
 
     private void execute( TraversalDescription traversal, Uniqueness uniqueness )
     {
-        Traverser traverser = traversal.uniqueness( uniqueness ).traverse(
-                node( "1" ) );
+        Traverser traverser = traversal.uniqueness( uniqueness ).traverse( node( "1" ) );
         assertFalse( "empty traversal", count( traverser ) == 0 );
     }
 
     @Test
-    @SuppressWarnings( "deprecation" )
     public void testTraverseRelationshipsWithStartNodeNotIncluded() throws Exception
     {
-        TraversalDescription traversal = traversal().filter(
-                Traversal.returnAllButStartNode() );
-        int count = 0;
-        for ( Relationship rel : traversal.traverse( node( "1" ) ).relationships() )
-        {
-            count++;
-        }
-        assertEquals( 1, count );
+        TraversalDescription traversal = traversal().evaluator( excludeStartPosition() );
+        assertEquals( 1, count( traversal.traverse( node( "1" ) ).relationships() ) );
     }
 }

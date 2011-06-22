@@ -19,7 +19,7 @@
  */
 package org.neo4j.graphalgo.impl.path;
 
-import static org.neo4j.graphdb.traversal.Evaluators.returnWhereEndNodeIs;
+import static org.neo4j.graphdb.traversal.Evaluators.includeWhereEndNodeIs;
 import static org.neo4j.graphdb.traversal.Evaluators.toDepth;
 import static org.neo4j.kernel.Traversal.traversal;
 
@@ -45,7 +45,7 @@ public class AllPaths implements PathFinder<Path>
     public Iterable<Path> findAllPaths( Node start, final Node end )
     {
         return traversal().expand( expander ).depthFirst().uniqueness( uniqueness() )
-                .evaluator( toDepth( maxDepth ) ).evaluator( returnWhereEndNodeIs( end ) )
+                .evaluator( toDepth( maxDepth ) ).evaluator( includeWhereEndNodeIs( end ) )
                 .traverse( start );
     }
 

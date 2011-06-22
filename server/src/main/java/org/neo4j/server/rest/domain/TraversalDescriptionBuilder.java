@@ -19,6 +19,8 @@
  */
 package org.neo4j.server.rest.domain;
 
+import static org.neo4j.graphdb.traversal.Evaluators.excludeStartPosition;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -27,6 +29,8 @@ import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.Expander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Traverser.Order;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.kernel.Traversal;
 
@@ -63,12 +67,17 @@ public class TraversalDescriptionBuilder
         Object returnDescription = description.get( "return_filter" );
         if ( returnDescription != null )
         {
-            result = result.filter( EvaluatorFactory.returnFilter( (Map) returnDescription ) );
+            Evaluator filter = EvaluatorFactory.returnFilter( (Map) returnDescription );
+            // Filter is null when "all" is used, no filter then
+            if ( filter != null )
+            {
+                result = result.evaluator( filter );
+            }
         }
         else
         {
             // Default return evaluator
-            result = result.filter( Traversal.returnAllButStartNode() );
+            result = result.evaluator( excludeStartPosition() );
         }
         return result;
     }
@@ -80,15 +89,18 @@ public class TraversalDescriptionBuilder
         Object pruneDescription = description.get( "prune_evaluator" );
         if ( pruneDescription != null )
         {
-            result = result.prune( EvaluatorFactory.pruneEvaluator( (Map) pruneDescription ) );
+            Evaluator pruner = EvaluatorFactory.pruneEvaluator( (Map) pruneDescription );
+            if ( pruner != null )
+            {
+                result = result.evaluator( pruner );
+            }
         }
         
         Object maxDepth = description.get( "max_depth" );
         maxDepth = maxDepth != null || pruneDescription != null ? maxDepth : 1;
         if ( maxDepth != null )
         {
-            result = result.prune( Traversal.pruneAfterDepth(
-                    ((Number) maxDepth).intValue() ) );
+            result = result.evaluator( Evaluators.toDepth( ((Number) maxDepth).intValue() ) );
         }
         return result;
     }

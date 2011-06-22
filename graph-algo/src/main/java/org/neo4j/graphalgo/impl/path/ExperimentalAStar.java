@@ -19,7 +19,7 @@
  */
 package org.neo4j.graphalgo.impl.path;
 
-import static org.neo4j.graphdb.traversal.Evaluators.returnWhereEndNodeIs;
+import static org.neo4j.graphdb.traversal.Evaluators.includeWhereEndNodeIs;
 import static org.neo4j.kernel.Traversal.traversal;
 
 import java.util.Iterator;
@@ -57,7 +57,7 @@ public class ExperimentalAStar implements PathFinder<WeightedPath>
     public Iterable<WeightedPath> findAllPaths( Node start, final Node end )
     {
         final Traverser traverser = traversalDescription.order(
-                new SelectorFactory( end ) ).evaluator( returnWhereEndNodeIs( end ) ).traverse( start );
+                new SelectorFactory( end ) ).evaluator( includeWhereEndNodeIs( end ) ).traverse( start );
         return new Iterable<WeightedPath>()
         {
             public Iterator<WeightedPath> iterator()

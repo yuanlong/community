@@ -26,18 +26,14 @@ import java.util.Collection;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Expander;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
-import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFactory;
-import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.StandardExpander;
 import org.neo4j.kernel.Traversal;
 import org.neo4j.kernel.Uniqueness;
@@ -109,30 +105,6 @@ public final class TraversalDescriptionImpl implements TraversalDescription
 
         return new TraversalDescriptionImpl( expander, uniqueness, parameter,
                 evaluator, branchSelector );
-    }
-    
-    public TraversalDescription prune( PruneEvaluator pruning )
-    {
-        return evaluator( pruning == PruneEvaluator.NONE ? Evaluators.all() :
-                new WrappedPruneEvaluator( pruning ) );
-    }
-    
-    public TraversalDescription filter( Predicate<Path> filter )
-    {
-        Evaluator evaluator = null;
-        if ( filter == Traversal.returnAll() )
-        {
-            evaluator = Evaluators.all();
-        }
-        else if ( filter == Traversal.returnAllButStartNode() )
-        {
-            evaluator = Evaluators.excludeStartPosition();
-        }
-        else
-        {
-            evaluator = new WrappedFilter( filter );
-        }
-        return evaluator( evaluator );
     }
     
     public TraversalDescription evaluator( Evaluator evaluator )
@@ -229,41 +201,5 @@ public final class TraversalDescriptionImpl implements TraversalDescription
         }
         return new TraversalDescriptionImpl( Traversal.expander( expander ), uniqueness,
                 uniquenessParameter, evaluator, branchSelector );
-    }
-    
-    private static class WrappedPruneEvaluator implements Evaluator
-    {
-        private final PruneEvaluator pruning;
-
-        WrappedPruneEvaluator( PruneEvaluator pruning )
-        {
-            this.pruning = pruning;
-        }
-
-        public Evaluation evaluate( Path path )
-        {
-            // Before the Evaluator, when PruneEvaluator was used individually a PruneEvaluator
-            // was never called with the start node as argument. This condition mimics that behaviour.
-            if ( path.length() == 0 )
-            {
-                return Evaluation.INCLUDE_AND_CONTINUE;
-            }
-            return pruning.pruneAfter( path ) ? Evaluation.INCLUDE_AND_PRUNE : Evaluation.INCLUDE_AND_CONTINUE;
-        }
-    }
-    
-    private static class WrappedFilter implements Evaluator
-    {
-        private final Predicate<Path> filter;
-
-        WrappedFilter( Predicate<Path> filter )
-        {
-            this.filter = filter;
-        }
-
-        public Evaluation evaluate( Path path )
-        {
-            return filter.accept( path ) ? Evaluation.INCLUDE_AND_CONTINUE : Evaluation.EXCLUDE_AND_CONTINUE;
-        }
     }
 }

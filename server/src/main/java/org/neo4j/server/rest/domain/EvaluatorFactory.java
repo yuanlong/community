@@ -19,6 +19,8 @@
  */
 package org.neo4j.server.rest.domain;
 
+import static org.neo4j.graphdb.traversal.Evaluators.excludeStartPosition;
+
 import java.util.Map;
 
 import javax.script.Compilable;
@@ -30,15 +32,13 @@ import javax.script.ScriptException;
 import javax.script.SimpleScriptContext;
 
 import org.neo4j.graphdb.Path;
-import org.neo4j.graphdb.traversal.PruneEvaluator;
-import org.neo4j.helpers.Predicate;
-import org.neo4j.kernel.Traversal;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
 
 /**
- * This factory can instantiate or get {@link PruneEvaluator}s and
- * {@link ReturnFilter}s from a description. Either it returns built-in
- * evaluators, or instantiates wrappers around user-supplied scripts,
- * f.ex. javascript.
+ * This factory can instantiate or get {@link Evaluator}s from a description.
+ * Either it returns built-in evaluators, or instantiates wrappers around
+ * user-supplied scripts, f.ex. javascript.
  */
 abstract class EvaluatorFactory
 {
@@ -47,7 +47,7 @@ abstract class EvaluatorFactory
     private static final String KEY_BODY = "body";
     private static final String KEY_NAME = "name";
 
-    public static PruneEvaluator pruneEvaluator( Map<String, Object> description )
+    public static Evaluator pruneEvaluator( Map<String, Object> description )
     {
         if ( refersToBuiltInEvaluator( description ) )
         {
@@ -60,7 +60,7 @@ abstract class EvaluatorFactory
         }
     }
 
-    public static Predicate<Path> returnFilter( Map<String, Object> description )
+    public static Evaluator returnFilter( Map<String, Object> description )
     {
         if ( refersToBuiltInEvaluator( description ) )
         {
@@ -79,14 +79,13 @@ abstract class EvaluatorFactory
         return language.equals( BUILTIN );
     }
 
-    private static PruneEvaluator builtInPruneEvaluator(
-            Map<String, Object> description )
+    private static Evaluator builtInPruneEvaluator( Map<String, Object> description )
     {
         String name = (String) description.get( KEY_NAME );
         // FIXME I don't like these hardcoded strings
         if ( name.equalsIgnoreCase( "none" ) )
         {
-            return PruneEvaluator.NONE;
+            return null;
         }
         else
         {
@@ -94,17 +93,17 @@ abstract class EvaluatorFactory
         }
     }
 
-    private static Predicate<Path> builtInReturnFilter( Map<String, Object> description )
+    private static Evaluator builtInReturnFilter( Map<String, Object> description )
     {
         String name = (String) description.get( KEY_NAME );
         // FIXME I don't like these hardcoded strings
         if ( name.equalsIgnoreCase( "all" ) )
         {
-            return Traversal.returnAll();
+            return null;
         }
         else if ( name.equalsIgnoreCase( "all_but_start_node" ) )
         {
-            return Traversal.returnAllButStartNode();
+            return excludeStartPosition();
         }
         else
         {
@@ -229,30 +228,31 @@ abstract class EvaluatorFactory
         }
     }
 
-    private static class ScriptedPruneEvaluator extends ScriptedEvaluator implements PruneEvaluator
+    private static class ScriptedPruneEvaluator extends ScriptedEvaluator implements Evaluator
     {
         ScriptedPruneEvaluator( ScriptEngine engine, String body )
         {
             super( engine, body );
         }
-
-        public boolean pruneAfter( Path position )
+        
+        @Override
+        public Evaluation evaluate( Path path )
         {
-            return (Boolean) executor( position ).eval( position );
+            return Evaluation.ofContinues( !(Boolean)executor( path ).eval( path ) );
         }
     }
 
-    private static class ScriptedReturnEvaluator extends ScriptedEvaluator implements
-            Predicate<Path>
+    private static class ScriptedReturnEvaluator extends ScriptedEvaluator implements Evaluator
     {
         ScriptedReturnEvaluator( ScriptEngine engine, String body )
         {
             super( engine, body );
         }
 
-        public boolean accept( Path position )
+        @Override
+        public Evaluation evaluate( Path path )
         {
-            return (Boolean) this.executor( position ).eval( position );
+            return Evaluation.ofIncludes( (Boolean) this.executor( path ).eval( path ) );
         }
     }
 }

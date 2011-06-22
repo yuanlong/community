@@ -29,9 +29,6 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.helpers.Predicate;
@@ -46,21 +43,6 @@ import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
  */
 public class Traversal
 {
-    private static final Predicate<Path> RETURN_ALL = new Predicate<Path>()
-    {
-        public boolean accept( Path item )
-        {
-            return true;
-        }
-    };
-    private static final Predicate<Path> RETURN_ALL_BUT_START_NODE = new Predicate<Path>()
-    {
-        public boolean accept( Path item )
-        {
-            return item.length() > 0;
-        }
-    };
-
     /**
      * Creates a new {@link TraversalDescription} with default value for
      * everything so that it's OK to call
@@ -234,75 +216,6 @@ public class Traversal
             relationships[i] = iter.next();
         }
         return new FinalTraversalBranch( tailPath.startNode(), relationships );
-    }
-
-    /**
-     * A {@link PruneEvaluator} which prunes everything beyond {@code depth}.
-     * @param depth the depth to prune beyond (after).
-     * @return a {@link PruneEvaluator} which prunes everything after
-     * {@code depth}.
-     * @deprecated because of the introduction of {@link Evaluator}. The equivalent
-     * is {@link Evaluators#toDepth(int)}.
-     */
-    public static PruneEvaluator pruneAfterDepth( final int depth )
-    {
-        return new PruneEvaluator()
-        {
-            public boolean pruneAfter( Path position )
-            {
-                return position.length() >= depth;
-            }
-        };
-    }
-
-    /**
-     * A traversal return filter which returns all {@link Path}s it encounters.
-     *
-     * @return a return filter which returns everything.
-     * @deprecated because of the introduction of {@link Evaluator}. The equivalent
-     * is {@link Evaluators#all()}.
-     */
-    public static Predicate<Path> returnAll()
-    {
-        return RETURN_ALL;
-    }
-
-    /**
-     * Returns a filter which accepts items accepted by at least one of the
-     * supplied filters.
-     *
-     * @param filters to group together.
-     * @return a {@link Predicate} which accepts if any of the filters accepts.
-     */
-    public static Predicate<Path> returnAcceptedByAny( final Predicate<Path>... filters )
-    {
-        return new Predicate<Path>()
-        {
-            public boolean accept( Path item )
-            {
-                for ( Predicate<Path> filter : filters )
-                {
-                    if ( filter.accept( item ) )
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        };
-    }
-
-    /**
-     * A traversal return filter which returns all {@link Path}s except the
-     * position of the start node.
-     *
-     * @return a return filter which returns everything except the start node.
-     * @deprecated because of the introduction of {@link Evaluator}. The equivalent
-     * is {@link Evaluators#excludeStartPosition()}.
-     */
-    public static Predicate<Path> returnAllButStartNode()
-    {
-        return RETURN_ALL_BUT_START_NODE;
     }
 
     /**

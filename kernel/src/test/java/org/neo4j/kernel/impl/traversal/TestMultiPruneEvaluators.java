@@ -20,11 +20,9 @@
 package org.neo4j.kernel.impl.traversal;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.neo4j.graphdb.traversal.Evaluators.toDepth;
 import static org.neo4j.helpers.collection.IteratorUtil.count;
-import static org.neo4j.helpers.collection.IteratorUtil.lastOrNull;
 import static org.neo4j.kernel.Traversal.traversal;
 
 import java.util.HashSet;
@@ -37,7 +35,6 @@ import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.PruneEvaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 
 public class TestMultiPruneEvaluators extends AbstractTestBase
@@ -51,26 +48,6 @@ public class TestMultiPruneEvaluators extends AbstractTestBase
                 "d to j", "d to k", "d to l",
                 "e to m", "e to n",
                 "k to o", "k to p", "k to q", "k to r" );
-    }
-
-    @Test
-    public void makeSurePruneIsntCalledForStartNode()
-    {
-        final boolean[] calledForStartPosition = new boolean[1];
-        PruneEvaluator evaluator = new PruneEvaluator()
-        {
-            public boolean pruneAfter( Path position )
-            {
-                if ( position.length() == 0 )
-                {
-                    calledForStartPosition[0] = true;
-                }
-                return false;
-            }
-        };
-
-        lastOrNull( traversal().prune( evaluator ).traverse( node( "a" ) ) );
-        assertFalse( calledForStartPosition[0] );
     }
 
     @Test

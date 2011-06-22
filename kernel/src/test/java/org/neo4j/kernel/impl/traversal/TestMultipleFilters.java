@@ -19,8 +19,8 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import static org.neo4j.graphdb.traversal.Evaluators.includeIfAcceptedByAny;
 import static org.neo4j.helpers.collection.IteratorUtil.count;
-import static org.neo4j.kernel.Traversal.returnAcceptedByAny;
 import static org.neo4j.kernel.Traversal.traversal;
 
 import org.junit.BeforeClass;
@@ -105,6 +105,6 @@ public class TestMultipleFilters extends AbstractTestBase
         // Nodes connected (OUTGOING) to c AND e (which none is)
         expectNodes( traversal().evaluator( mustBeConnectedToC ).evaluator( mustBeConnectedToE ).traverse( node( "a" ) ) );
         // Nodes connected (OUTGOING) to c OR e (which "a" and "b" is)
-        expectNodes( traversal().filter( returnAcceptedByAny( mustBeConnectedToC, mustBeConnectedToE ) ).traverse( node( "a" ) ), "a", "b" );
+        expectNodes( traversal().evaluator( includeIfAcceptedByAny( mustBeConnectedToC, mustBeConnectedToE ) ).traverse( node( "a" ) ), "a", "b" );
     }
 }

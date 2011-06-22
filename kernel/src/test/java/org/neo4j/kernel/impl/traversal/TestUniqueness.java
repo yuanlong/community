@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.neo4j.graphdb.Direction.OUTGOING;
 import static org.neo4j.graphdb.DynamicRelationshipType.withName;
-import static org.neo4j.graphdb.traversal.Evaluators.returnWhereEndNodeIs;
+import static org.neo4j.graphdb.traversal.Evaluators.includeWhereEndNodeIs;
 import static org.neo4j.kernel.Traversal.traversal;
 import static org.neo4j.kernel.Uniqueness.NODE_LEVEL;
 
@@ -52,7 +52,7 @@ public class TestUniqueness extends AbstractTestBase
         Node a = getNodeWithName( "a" );
         Node e = getNodeWithName( "e" );
         Path[] paths = splitPathsOnePerLevel( traversal().relationships( to, OUTGOING )
-                .uniqueness( NODE_LEVEL ).evaluator( returnWhereEndNodeIs( e ) ).traverse( a ) );
+                .uniqueness( NODE_LEVEL ).evaluator( includeWhereEndNodeIs( e ) ).traverse( a ) );
         NodePathRepresentation pathRepresentation = new NodePathRepresentation( NAME_PROPERTY_REPRESENTATION );
         assertEquals( "a,e", pathRepresentation.represent( paths[1] ) );
         String levelTwoPathRepresentation = pathRepresentation.represent( paths[2] );

@@ -262,7 +262,7 @@ public abstract class Evaluators
         };
     }
     
-    public static Evaluator returnWhereEndNodeIs( Node... nodes )
+    public static Evaluator includeWhereEndNodeIs( Node... nodes )
     {
         return endNodeIs( Evaluation.INCLUDE_AND_CONTINUE, Evaluation.EXCLUDE_AND_CONTINUE, nodes );
     }
@@ -270,5 +270,32 @@ public abstract class Evaluators
     public static Evaluator pruneWhereEndNodeIs( Node... nodes )
     {
         return endNodeIs( Evaluation.INCLUDE_AND_PRUNE, Evaluation.EXCLUDE_AND_CONTINUE, nodes );
+    }
+    
+    /**
+     * Whereas adding {@link Evaluator}s to a {@link TraversalDescription} puts those
+     * evaluators in {@code AND-mode} this can group many evaluators in {@code OR-mode}.
+     * @param evaluators represented as one evaluators. If any of the evaluators decides
+     * to include a path it will be included.
+     * @return an {@link Evaluator} which decides to include a path if any of the supplied
+     * evaluators wants to include it.
+     */
+    public static Evaluator includeIfAcceptedByAny( final Evaluator... evaluators )
+    {
+        return new Evaluator()
+        {
+            @Override
+            public Evaluation evaluate( Path path )
+            {
+                for ( Evaluator evaluator : evaluators )
+                {
+                    if ( evaluator.evaluate( path ).includes() )
+                    {
+                        return Evaluation.INCLUDE_AND_CONTINUE;
+                    }
+                }
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            }
+        };
     }
 }
