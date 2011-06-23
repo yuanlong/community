@@ -36,6 +36,7 @@ import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.helpers.collection.PrefetchingIterator;
@@ -89,7 +90,7 @@ public class ExactDepthPathFinder implements PathFinder<Path>
         TraversalDescription base = traversal().uniqueness( Uniqueness.RELATIONSHIP_PATH ).order(
                 new BranchOrderingPolicy()
                 {
-                    public BranchSelector create( TraversalBranch startSource )
+                    public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
                     {
                         return new LiteDepthFirstSelector( startSource,
                                 startThreshold );

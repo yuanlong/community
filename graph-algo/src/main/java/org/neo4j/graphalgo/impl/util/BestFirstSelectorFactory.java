@@ -28,11 +28,12 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 
 public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
         implements BranchOrderingPolicy
 {
-    public BranchSelector create( TraversalBranch startSource )
+    public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
     {
         return new BestFirstSelector( startSource, getStartData() );
     }

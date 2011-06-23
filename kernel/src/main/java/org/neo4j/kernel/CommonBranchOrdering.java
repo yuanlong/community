@@ -22,33 +22,34 @@ package org.neo4j.kernel;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 
 public enum CommonBranchOrdering implements BranchOrderingPolicy
 {
     PREORDER_DEPTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
         {
             return new PreorderDepthFirstSelector( startSource );
         }
     },
     POSTORDER_DEPTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
         {
             return new PostorderDepthFirstSelector( startSource );
         }
     },
     PREORDER_BREADTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
         {
             return new PreorderBreadthFirstSelector( startSource );
         }
     },
     POSTORDER_BREADTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
         {
             return new PostorderBreadthFirstSelector( startSource );
         }

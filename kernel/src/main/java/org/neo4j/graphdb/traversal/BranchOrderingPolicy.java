@@ -30,8 +30,9 @@ public interface BranchOrderingPolicy
      * first branch to base a decision on "where to go next".
      *
      * @param startBranch the {@link TraversalBranch} to start from.
+     * @param branchCreator creator of additional start branches.
      * @return a new {@link BranchSelector} used to decide "where to go next" in
      *         the traversal.
      */
-    BranchSelector create( TraversalBranch startBranch );
+    BranchSelector create( TraversalBranch startBranch, TraversalBranchCreator branchCreator );
 }

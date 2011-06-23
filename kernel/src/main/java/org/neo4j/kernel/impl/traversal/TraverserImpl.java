@@ -19,6 +19,8 @@
  */
 package org.neo4j.kernel.impl.traversal;
 
+import static java.util.Arrays.asList;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -29,6 +31,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFilter;
 import org.neo4j.helpers.collection.CombiningIterator;
@@ -94,7 +97,7 @@ class TraverserImpl implements Traverser
         };
     }
 
-    class TraverserIterator extends PrefetchingIterator<Path>
+    class TraverserIterator extends PrefetchingIterator<Path> implements TraversalBranchCreator
     {
         final UniquenessFilter uniqueness;
         private final BranchSelector sourceSelector;
@@ -104,7 +107,8 @@ class TraverserImpl implements Traverser
         {
             this.description = TraverserImpl.this.description;
             this.uniqueness = description.uniqueness.create( description.uniquenessParameter );
-            this.sourceSelector = description.branchSelector.create( new AsOneStartBranch( this, startNodes ) );
+            this.sourceSelector = description.branchSelector.create(
+                    new AsOneStartBranch( this, startNodes ), this );
         }
 
         boolean okToProceedFirst( TraversalBranch source )
@@ -115,6 +119,15 @@ class TraverserImpl implements Traverser
         boolean okToProceed( TraversalBranch source )
         {
             return this.uniqueness.check( source );
+        }
+        
+        @Override
+        public TraversalBranch create( Node node, Node... additionalNodes )
+        {
+            Collection<Node> nodes = new ArrayList<Node>( additionalNodes.length+1 );
+            nodes.add( node );
+            nodes.addAll( asList( additionalNodes ) );
+            return new AsOneStartBranch( this, nodes );
         }
 
         @Override

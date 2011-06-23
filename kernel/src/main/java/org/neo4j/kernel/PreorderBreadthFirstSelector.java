@@ -30,12 +30,12 @@ import org.neo4j.graphdb.traversal.TraversalBranch;
  * pattern, the most natural ordering in a breadth first search, see
  * http://en.wikipedia.org/wiki/Breadth-first_search
  */
-class PreorderBreadthFirstSelector implements BranchSelector
+public class PreorderBreadthFirstSelector implements BranchSelector
 {
     private final Queue<TraversalBranch> queue = new LinkedList<TraversalBranch>();
     private TraversalBranch current;
     
-    PreorderBreadthFirstSelector( TraversalBranch startSource )
+    public PreorderBreadthFirstSelector( TraversalBranch startSource )
     {
         this.current = startSource;
     }
