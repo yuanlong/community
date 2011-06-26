@@ -22,6 +22,7 @@ package org.neo4j.server.rest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.neo4j.server.rest.FunctionalTestHelper.CLIENT;
 
 import java.io.IOException;
 
@@ -34,7 +35,6 @@ import org.junit.Test;
 import org.neo4j.server.NeoServerWithEmbeddedWebServer;
 import org.neo4j.server.helpers.ServerHelper;
 
-import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 
 public class RedirectorTests
@@ -63,7 +63,7 @@ public class RedirectorTests
     @Test
     public void shouldRedirectRootToWebadmin() throws Exception
     {
-        ClientResponse response = Client.create()
+        ClientResponse response = CLIENT
                 .resource( server.baseUri() )
                 .type( MediaType.APPLICATION_JSON )
                 .accept( MediaType.APPLICATION_JSON )
@@ -77,7 +77,7 @@ public class RedirectorTests
     {
         String url = server.baseUri() + "a/different/relative/webadmin/data/uri/";
 
-        ClientResponse response = Client.create()
+        ClientResponse response = CLIENT
                 .resource( url )
                 .type( MediaType.APPLICATION_JSON )
                 .accept( MediaType.APPLICATION_JSON )

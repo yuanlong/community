@@ -36,9 +36,16 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
 /**
+<<<<<<< HEAD
  * This factory can instantiate or get {@link Evaluator}s from a description.
  * Either it returns built-in evaluators, or instantiates wrappers around
  * user-supplied scripts, f.ex. javascript.
+=======
+ * This factory can instantiate or get {@link PruneEvaluator}s and
+ * {@link ReturnFilter}s from a description. Either it returns built-in
+ * evaluators, or instantiates wrappers around user-supplied scripts, f.ex.
+ * javascript.
+>>>>>>> master
  */
 abstract class EvaluatorFactory
 {
@@ -55,8 +62,7 @@ abstract class EvaluatorFactory
         }
         else
         {
-            return new ScriptedPruneEvaluator( scriptEngine( description ),
-                    (String) description.get( KEY_BODY ) );
+            return new ScriptedPruneEvaluator( scriptEngine( description ), (String) description.get( KEY_BODY ) );
         }
     }
 
@@ -68,8 +74,7 @@ abstract class EvaluatorFactory
         }
         else
         {
-            return new ScriptedReturnEvaluator( scriptEngine( description ),
-                    (String) description.get( KEY_BODY ) );
+            return new ScriptedReturnEvaluator( scriptEngine( description ), (String) description.get( KEY_BODY ) );
         }
     }
 
@@ -147,8 +152,8 @@ abstract class EvaluatorFactory
         {
             try
             {
-                this.script.getContext().setAttribute( "position", position,
-                        ScriptContext.ENGINE_SCOPE );
+                this.script.getContext()
+                        .setAttribute( "position", position, ScriptContext.ENGINE_SCOPE );
                 return this.script.eval( body );
             }
             catch ( ScriptException e )
@@ -210,8 +215,7 @@ abstract class EvaluatorFactory
                     this.engine.setContext( context );
                     if ( this.engine instanceof Compilable )
                     {
-                        this.executor = new CompiledScriptExecutor(
-                                ((Compilable) engine).compile( body ), context );
+                        this.executor = new CompiledScriptExecutor( ( (Compilable) engine ).compile( body ), context );
                     }
                     else
                     {

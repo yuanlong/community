@@ -64,9 +64,8 @@ public class NeoServerDefaultPortFunctionalTest
     {
 
         FunctionalTestHelper functionalTestHelper = new FunctionalTestHelper( server );
-
-        ClientResponse response = Client.create()
-                .resource( functionalTestHelper.getWebadminUri() )
+        
+        ClientResponse response = Client.create().resource( functionalTestHelper.getWebadminUri() )
                 .get( ClientResponse.class );
 
         assertThat( response.getStatus(), is( 200 ) );
