@@ -20,6 +20,9 @@
 package org.neo4j.kernel;
 
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Expander;
@@ -29,8 +32,12 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
+import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.SelectorOrderer;
+import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.impl.traversal.FinalTraversalBranch;
 import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
@@ -43,6 +50,71 @@ import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
  */
 public class Traversal
 {
+    private static final SelectorOrderingPolicy ALTERNATING_SELECTOR_ORDERING = new SelectorOrderingPolicy()
+    {
+        @Override
+        public SelectorOrderer create( final BranchSelector start, final BranchSelector end )
+        {
+            return new AbstractSelectorOrderer<Void>( start, end )
+            {
+                @Override
+                public TraversalBranch next()
+                {
+                    return nextBranchFromNextSelector( true );
+                }
+            };
+        }
+    };
+    
+    private static final SelectorOrderingPolicy LEVEL_SELECTOR_ORDERING = new SelectorOrderingPolicy()
+    {
+        @Override
+        public SelectorOrderer create( final BranchSelector start, final BranchSelector end )
+        {
+            return new AbstractSelectorOrderer<Pair<AtomicInteger,Queue<TraversalBranch>>>( start, end )
+            {
+                protected Pair<AtomicInteger,Queue<TraversalBranch>> initialState()
+                {
+                    return Pair.<AtomicInteger,Queue<TraversalBranch>>of( new AtomicInteger(),
+                            new LinkedList<TraversalBranch>() );
+                }
+                
+                @Override
+                public TraversalBranch next()
+                {
+                    TraversalBranch branch = nextBranchFromCurrentSelector( true );
+                    System.out.println( currentSelector() + ": " + branch );
+                    Pair<AtomicInteger,Queue<TraversalBranch>> state = getStateForCurrentSelector();
+                    AtomicInteger previousDepth = state.first();
+                    if ( branch != null && branch.length() == previousDepth.get() )
+                    {
+                        return branch;
+                    }
+                    else
+                    {
+                        if ( branch != null )
+                        {
+                            previousDepth.set( branch.length() );
+                            state.other().add( branch );
+                            System.out.println( "put on hold " + branch );
+                        }
+                        BranchSelector otherSelector = nextSelector();
+                        TraversalBranch otherBranch = getStateForCurrentSelector().other().poll();
+                        System.out.println( "from held " + currentSelector() + ": " + otherBranch );
+                        if ( otherBranch != null )
+                        {
+                            return otherBranch;
+                        }
+
+                        otherBranch = otherSelector.next();
+                        System.out.println( "other " + currentSelector() + ": " + otherBranch );
+                        return otherBranch != null ? otherBranch : branch;
+                    }
+                }
+            };
+        }
+    };
+    
     /**
      * Creates a new {@link TraversalDescription} with default value for
      * everything so that it's OK to call
@@ -177,7 +249,7 @@ public class Traversal
 
     /**
      * Combines two {@link TraversalBranch}s with a common
-     * {@link TraversalBranch#node() head node} in order to obtain an
+     * {@link TraversalBranch#endNode() head node} in order to obtain an
      * {@link TraversalBranch} representing a path from the start node of the
      * <code>source</code> {@link TraversalBranch} to the start node of the
      * <code>target</code> {@link TraversalBranch}. The resulting
@@ -187,7 +259,7 @@ public class Traversal
      *
      * @param source the {@link TraversalBranch} where the resulting path starts
      * @param target the {@link TraversalBranch} where the resulting path ends
-     * @throws IllegalArgumentException if the {@link TraversalBranch#node()
+     * @throws IllegalArgumentException if the {@link TraversalBranch#endNode()
      *             head nodes} of the supplied {@link TraversalBranch}s does not
      *             match
      * @return an {@link TraversalBranch} that represents the path from the
@@ -197,12 +269,12 @@ public class Traversal
     public static TraversalBranch combineSourcePaths( TraversalBranch source,
             TraversalBranch target )
     {
-        if ( !source.node().equals( target.node() ) )
+        if ( !source.endNode().equals( target.endNode() ) )
         {
             throw new IllegalArgumentException(
                     "The nodes of the head and tail must match" );
         }
-        Path headPath = source.position(), tailPath = target.position();
+        Path headPath = source, tailPath = target;
         Relationship[] relationships = new Relationship[headPath.length()
                                                         + tailPath.length()];
         Iterator<Relationship> iter = headPath.relationships().iterator();
@@ -270,6 +342,16 @@ public class Traversal
     public static BranchOrderingPolicy postorderBreadthFirst()
     {
         return CommonBranchOrdering.POSTORDER_BREADTH_FIRST;
+    }
+    
+    public static SelectorOrderingPolicy alternatingSelectorOrdering()
+    {
+        return ALTERNATING_SELECTOR_ORDERING;
+    }
+    
+    public static SelectorOrderingPolicy levelSelectorOrdering()
+    {
+        return LEVEL_SELECTOR_ORDERING;
     }
 
     /**

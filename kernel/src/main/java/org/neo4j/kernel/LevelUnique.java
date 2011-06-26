@@ -38,7 +38,7 @@ class LevelUnique extends AbstractUniquenessFilter
     @Override
     public boolean check( TraversalBranch branch )
     {
-        Integer level = branch.depth();
+        Integer level = branch.length();
         Set<Long> levelIds = idsPerLevel.get( level );
         if ( levelIds == null )
         {

@@ -76,7 +76,7 @@ public interface Path extends Iterable<PropertyContainer>
      * @return the nodes in this path.
      */
     Iterable<Node> nodes();
-
+    
     /**
      * Returns the length of this path. That is the number of relationships
      * (which is the same as the number of nodes minus one). The shortest path

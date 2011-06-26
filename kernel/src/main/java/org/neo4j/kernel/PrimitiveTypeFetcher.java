@@ -29,7 +29,7 @@ enum PrimitiveTypeFetcher
         @Override
         long getId( TraversalBranch source )
         {
-            return source.node().getId();
+            return source.endNode().getId();
         }
 
         @Override
@@ -43,13 +43,13 @@ enum PrimitiveTypeFetcher
         @Override
         long getId( TraversalBranch source )
         {
-            return source.relationship().getId();
+            return source.lastRelationship().getId();
         }
 
         @Override
         boolean idEquals( TraversalBranch source, long idToCompare )
         {
-            Relationship relationship = source.relationship();
+            Relationship relationship = source.lastRelationship();
             return relationship != null && relationship.getId() == idToCompare;
         }
     };

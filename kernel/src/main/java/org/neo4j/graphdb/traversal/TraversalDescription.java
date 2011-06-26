@@ -158,6 +158,11 @@ public interface TraversalDescription
      * @return a new traversal description with the new modifications.
      */
     TraversalDescription expand( RelationshipExpander expander );
+    
+//    TraversalDescription translate( BranchTranslator translator );
+    
+    TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering,
+            Node endNode );
 
     /**
      * Traverse from a set of start nodes based on all the rules and behavior

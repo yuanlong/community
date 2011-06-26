@@ -62,7 +62,7 @@ public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
                 TraversalBranch next = current.next();
                 if ( next != null )
                 {
-                    if ( !visitedNodes.contains( next.node().getId() ) )
+                    if ( !visitedNodes.contains( next.endNode().getId() ) )
                     {
                         P newPriority = addPriority( next, currentAggregatedValue,
                                 calculateValue( next ) );
@@ -81,7 +81,7 @@ public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
             {
                 current = entry.getEntity();
                 currentAggregatedValue = entry.getPriority();
-                visitedNodes.add( current.node().getId() );
+                visitedNodes.add( current.endNode().getId() );
                 return current;
             }
             return null;
@@ -98,7 +98,7 @@ public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
     {
         public Node convert( TraversalBranch source )
         {
-            return source.node();
+            return source.endNode();
         }
     };
 }

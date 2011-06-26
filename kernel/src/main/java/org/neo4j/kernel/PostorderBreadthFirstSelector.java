@@ -76,9 +76,9 @@ class PostorderBreadthFirstSelector implements BranchSelector
         {
             if ( depth == null )
             {
-                depth = source.depth();
+                depth = source.length();
             }
-            else if ( source.depth() != depth )
+            else if ( source.length() != depth )
             {
                 break;
             }

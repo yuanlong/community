@@ -31,6 +31,7 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFactory;
@@ -40,10 +41,19 @@ import org.neo4j.kernel.Uniqueness;
 
 public final class TraversalDescriptionImpl implements TraversalDescription
 {
+//    private static final BranchTranslator STANDARD_TRANSLATOR = new BranchTranslator()
+//    {
+//        @Override
+//        public Path translate( TraversalBranch branch )
+//        {
+//            return branch;
+//        }
+//    };
+    
     public TraversalDescriptionImpl()
     {
         this( StandardExpander.DEFAULT, Uniqueness.NODE_GLOBAL, null,
-                Evaluators.all(), Traversal.preorderDepthFirst() );
+                Evaluators.all(), Traversal.preorderDepthFirst(), null, null );
     }
 
     final Expander expander;
@@ -51,16 +61,22 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     final Object uniquenessParameter;
     final Evaluator evaluator;
     final BranchOrderingPolicy branchSelector;
+//    final BranchTranslator translator;
+    final SelectorOrderingPolicy selectorOrdering;
+    final Node endNode;
 
     private TraversalDescriptionImpl( Expander expander,
             UniquenessFactory uniqueness, Object uniquenessParameter,
-            Evaluator evaluator, BranchOrderingPolicy branchSelector )
+            Evaluator evaluator, BranchOrderingPolicy branchSelector,
+            SelectorOrderingPolicy selectorOrdering, Node endNode )
     {
         this.expander = expander;
         this.uniqueness = uniqueness;
         this.uniquenessParameter = uniquenessParameter;
         this.evaluator = evaluator;
         this.branchSelector = branchSelector;
+        this.selectorOrdering = selectorOrdering;
+        this.endNode = endNode;
     }
 
     /* (non-Javadoc)
@@ -85,7 +101,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     public TraversalDescription uniqueness( UniquenessFactory uniqueness )
     {
         return new TraversalDescriptionImpl( expander, uniqueness, null,
-                evaluator, branchSelector );
+                evaluator, branchSelector, selectorOrdering, endNode );
     }
 
     /* (non-Javadoc)
@@ -104,7 +120,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
         }
 
         return new TraversalDescriptionImpl( expander, uniqueness, parameter,
-                evaluator, branchSelector );
+                evaluator, branchSelector, selectorOrdering, endNode );
     }
     
     public TraversalDescription evaluator( Evaluator evaluator )
@@ -115,10 +131,10 @@ public final class TraversalDescriptionImpl implements TraversalDescription
         }
         nullCheck( evaluator, Evaluator.class, "RETURN_ALL" );
         return new TraversalDescriptionImpl( expander, uniqueness, uniquenessParameter,
-                addBlaEvaluator( evaluator ), branchSelector );
+                addEvaluator( evaluator ), branchSelector, selectorOrdering, endNode );
     }
     
-    private Evaluator addBlaEvaluator( Evaluator evaluator )
+    private Evaluator addEvaluator( Evaluator evaluator )
     {
         if ( this.evaluator instanceof MultiEvaluator )
         {
@@ -160,7 +176,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
             return this;
         }
         return new TraversalDescriptionImpl( expander, uniqueness, uniquenessParameter,
-                evaluator, selector );
+                evaluator, selector, selectorOrdering, endNode );
     }
 
     public TraversalDescription depthFirst()
@@ -193,13 +209,27 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     /* (non-Javadoc)
      * @see org.neo4j.graphdb.traversal.TraversalDescription#expand(org.neo4j.graphdb.RelationshipExpander)
      */
-    public TraversalDescription expand(RelationshipExpander expander)
+    public TraversalDescription expand( RelationshipExpander expander )
     {
         if ( expander.equals( this.expander ) )
         {
             return this;
         }
         return new TraversalDescriptionImpl( Traversal.expander( expander ), uniqueness,
-                uniquenessParameter, evaluator, branchSelector );
+                uniquenessParameter, evaluator, branchSelector, selectorOrdering, endNode );
+    }
+    
+//    @Override
+//    public TraversalDescription translate( BranchTranslator translator )
+//    {
+//        return new TraversalDescriptionImpl( expander, uniqueness, translator, evaluator,
+//                branchSelector, translator, selectorOrdering, endNode );
+//    }
+
+    @Override
+    public TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering, Node endNode )
+    {
+        return new TraversalDescriptionImpl( expander, uniqueness, uniquenessParameter, evaluator,
+                branchSelector, selectorOrdering, endNode );
     }
 }

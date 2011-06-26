@@ -87,8 +87,8 @@ public class Dijkstra implements PathFinder<WeightedPath>
         @Override
         protected Double calculateValue( TraversalBranch next )
         {
-            return next.depth() == 0 ? 0d : evaluator.getCost(
-                    next.relationship(), Direction.OUTGOING );
+            return next.length() == 0 ? 0d : evaluator.getCost(
+                    next.lastRelationship(), Direction.OUTGOING );
         }
 
         @Override

@@ -116,14 +116,14 @@ public class ExperimentalAStar implements PathFinder<WeightedPath>
                 PositionData currentAggregatedValue, Double value )
         {
             return new PositionData( currentAggregatedValue.wayLengthG + value,
-                    estimateEvaluator.getCost( source.node(), end ) );
+                    estimateEvaluator.getCost( source.endNode(), end ) );
         }
 
         @Override
         protected Double calculateValue( TraversalBranch next )
         {
-            return next.depth() == 0 ? 0d :
-                costEvaluator.getCost( next.relationship(), Direction.OUTGOING );
+            return next.length() == 0 ? 0d :
+                costEvaluator.getCost( next.lastRelationship(), Direction.OUTGOING );
         }
 
         @Override

@@ -19,9 +19,7 @@
  */
 package org.neo4j.graphdb.traversal;
 
-import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 
 /**
@@ -29,39 +27,13 @@ import org.neo4j.graphdb.RelationshipExpander;
  * traversal context, for example parent and an iterator of relationships to go
  * next. It's a base to write a {@link BranchSelector} on top of.
  */
-public interface TraversalBranch
+public interface TraversalBranch extends Path
 {
     /**
      * The parent expansion source which created this {@link TraversalBranch}.
      * @return the parent of this expansion source.
      */
     TraversalBranch parent();
-
-    /**
-     * The position represented by this expansion source.
-     * @return the position represented by this expansion source.
-     */
-    Path position();
-
-    /**
-     * The depth for this expansion source compared to the start node of the
-     * traversal.
-     * @return the depth of this expansion source.
-     */
-    int depth();
-
-    /**
-     * The node for this expansion source.
-     * @return the node for this expansion source.
-     */
-    Node node();
-
-    /**
-     * The relationship for this expansion source. It's the relationship
-     * which was traversed to get to this expansion source.
-     * @return the relationship for this expansion source.
-     */
-    Relationship relationship();
 
     /**
      * Returns the next expansion source from the expanded relationships

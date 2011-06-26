@@ -20,9 +20,9 @@
 package org.neo4j.kernel.impl.traversal;
 
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
@@ -30,9 +30,9 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
-class TraversalBranchImpl implements TraversalBranch, Path
+class TraversalBranchImpl implements TraversalBranch
 {
-    private static final Iterator<Relationship> EMPTY_ITERATOR = new Iterator<Relationship>()
+    private static final Iterator<Relationship> PRUNED_ITERATOR = new Iterator<Relationship>()
     {
         @Override
         public boolean hasNext()
@@ -59,7 +59,6 @@ class TraversalBranchImpl implements TraversalBranch, Path
     private final Relationship howIGotHere;
     private final int depth;
     final TraverserIterator traverser;
-    private Path path;
     private int expandedCount;
     private Evaluation evaluation;
 
@@ -79,7 +78,7 @@ class TraversalBranchImpl implements TraversalBranch, Path
     @Override
     public String toString()
     {
-        return "TraversalBranch[source=" + source + ",howIGotHere=" + howIGotHere + ",depth=" + depth + "]";
+        return "TraversalBranch[source=" + source + "," + source.getProperty( "__simpleGraphBuilderId__" ) + ",howIGotHere=" + howIGotHere + ",depth=" + depth + "]";
     }
 
     /*
@@ -93,7 +92,7 @@ class TraversalBranchImpl implements TraversalBranch, Path
         this.source = source;
         this.howIGotHere = null;
         this.depth = 0;
-        this.evaluation = traverser.description.evaluator.evaluate( position() );
+        this.evaluation = traverser.description.evaluator.evaluate( this );
     }
 
     private void expandRelationships()
@@ -104,7 +103,7 @@ class TraversalBranchImpl implements TraversalBranch, Path
         }
         else
         {
-            relationships = EMPTY_ITERATOR;
+            relationships = PRUNED_ITERATOR;
         }
     }
     
@@ -120,7 +119,7 @@ class TraversalBranchImpl implements TraversalBranch, Path
 
     public void initialize()
     {
-        evaluation = traverser.description.evaluator.evaluate( position() );
+        evaluation = traverser.description.evaluator.evaluate( this );
         expandRelationships();
     }
 
@@ -143,36 +142,14 @@ class TraversalBranchImpl implements TraversalBranch, Path
                 return next;
             }
         }
+        // Just to help GC
+        relationships = PRUNED_ITERATOR;
         return null;
     }
 
-    public Path position()
-    {
-        return ensurePathInstantiated();
-    }
-
-    private Path ensurePathInstantiated()
-    {
-        if ( this.path == null )
-        {
-            this.path = new TraversalPath( this );
-        }
-        return this.path;
-    }
-
-    public int depth()
+    public int length()
     {
         return depth;
-    }
-
-    public Relationship relationship()
-    {
-        return howIGotHere;
-    }
-
-    public Node node()
-    {
-        return source;
     }
 
     public TraversalBranch parent()
@@ -192,7 +169,17 @@ class TraversalBranchImpl implements TraversalBranch, Path
 
     public Node startNode()
     {
-        return ensurePathInstantiated().startNode();
+        return findStartBranch().endNode();
+    }
+
+    private TraversalBranch findStartBranch()
+    {
+        TraversalBranch branch = this;
+        while ( branch.length() > 0 )
+        {
+            branch = branch.parent();
+        }
+        return branch;
     }
 
     public Node endNode()
@@ -207,21 +194,89 @@ class TraversalBranchImpl implements TraversalBranch, Path
 
     public Iterable<Relationship> relationships()
     {
-        return ensurePathInstantiated().relationships();
+        LinkedList<Relationship> relationships = new LinkedList<Relationship>();
+        TraversalBranch branch = this;
+        while ( branch.length() > 0 )
+        {
+            relationships.addFirst( branch.lastRelationship() );
+            branch = branch.parent();
+        }
+        return relationships;
     }
 
     public Iterable<Node> nodes()
     {
-        return ensurePathInstantiated().nodes();
-    }
-
-    public int length()
-    {
-        return depth;
+        LinkedList<Node> nodes = new LinkedList<Node>();
+        TraversalBranch branch = this;
+        while ( branch.length() > 0 )
+        {
+            nodes.addFirst( branch.endNode() );
+            branch = branch.parent();
+        }
+        nodes.addFirst( branch.endNode() );
+        return nodes;
     }
 
     public Iterator<PropertyContainer> iterator()
     {
-        return ensurePathInstantiated().iterator();
+        LinkedList<PropertyContainer> entities = new LinkedList<PropertyContainer>();
+        TraversalBranch branch = this;
+        while ( branch.length() > 0 )
+        {
+            entities.addFirst( branch.endNode() );
+            entities.addFirst( branch.lastRelationship() );
+            branch = branch.parent();
+        }
+        entities.addFirst( branch.endNode() );
+        return entities.iterator();
+    }
+    
+    @Override
+    public int hashCode()
+    {
+        TraversalBranch branch = this;
+        int hashCode = 1;
+        while ( branch.length() > 0 )
+        {
+            Relationship relationship = branch.lastRelationship();
+            hashCode = 31*hashCode + relationship.hashCode();
+            branch = branch.parent();
+        }
+        if ( hashCode == 1 )
+        {
+            hashCode = endNode().hashCode();
+        }
+        return hashCode;
+    }
+    
+    @Override
+    public boolean equals( Object obj )
+    {
+        if ( obj == this)
+        {
+            return true;
+        }
+        if ( !( obj instanceof TraversalBranch ) )
+        {
+            return false;
+        }
+
+        TraversalBranch branch = this;
+        TraversalBranch other = (TraversalBranch) obj;
+        if ( branch.length() != other.length() )
+        {
+            return false;
+        }
+        
+        while ( branch.length() > 0 )
+        {
+            if ( !branch.lastRelationship().equals( other.lastRelationship() ) )
+            {
+                return false;
+            }
+            branch = branch.parent();
+            other = other.parent();
+        }
+        return true;
     }
 }
