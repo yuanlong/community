@@ -20,9 +20,6 @@
 package org.neo4j.kernel;
 
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Expander;
@@ -32,13 +29,10 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
-import org.neo4j.graphdb.traversal.BranchSelector;
-import org.neo4j.graphdb.traversal.TraversalContext;
-import org.neo4j.graphdb.traversal.SelectorOrderer;
+import org.neo4j.graphdb.traversal.PathCollisionDetector;
 import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.impl.traversal.FinalTraversalBranch;
 import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
@@ -51,73 +45,6 @@ import org.neo4j.kernel.impl.traversal.TraversalDescriptionImpl;
  */
 public class Traversal
 {
-    private static final SelectorOrderingPolicy ALTERNATING_SELECTOR_ORDERING = new SelectorOrderingPolicy()
-    {
-        @Override
-        public SelectorOrderer create( final BranchSelector start, final BranchSelector end )
-        {
-            return new AbstractSelectorOrderer<Void>( start, end )
-            {
-                @Override
-                public TraversalBranch next( TraversalContext metadata )
-                {
-                    return nextBranchFromNextSelector( metadata, true );
-                }
-            };
-        }
-    };
-    
-    private static final SelectorOrderingPolicy LEVEL_SELECTOR_ORDERING = new SelectorOrderingPolicy()
-    {
-        @Override
-        public SelectorOrderer create( final BranchSelector start, final BranchSelector end )
-        {
-            return new AbstractSelectorOrderer<Pair<AtomicInteger,Queue<TraversalBranch>>>( start, end )
-            {
-                protected Pair<AtomicInteger,Queue<TraversalBranch>> initialState()
-                {
-                    return Pair.<AtomicInteger,Queue<TraversalBranch>>of( new AtomicInteger(),
-                            new LinkedList<TraversalBranch>() );
-                }
-                
-                @Override
-                public TraversalBranch next( TraversalContext metadata )
-                {
-                    TraversalBranch branch = nextBranchFromCurrentSelector( metadata, false );
-                    Pair<AtomicInteger,Queue<TraversalBranch>> state = getStateForCurrentSelector();
-                    AtomicInteger previousDepth = state.first();
-                    if ( branch != null && branch.length() == previousDepth.get() )
-                    {
-                        return branch;
-                    }
-                    else
-                    {
-                        if ( metadata.getNumberOfPathsReturned() > 0 )
-                        {
-                            nextSelector();
-                            return getStateForCurrentSelector().other().poll();
-                        }
-                        
-                        if ( branch != null )
-                        {
-                            previousDepth.set( branch.length() );
-                            state.other().add( branch );
-                        }
-                        BranchSelector otherSelector = nextSelector();
-                        TraversalBranch otherBranch = getStateForCurrentSelector().other().poll();
-                        if ( otherBranch != null )
-                        {
-                            return otherBranch;
-                        }
-
-                        otherBranch = otherSelector.next( metadata );
-                        return otherBranch != null ? otherBranch : branch;
-                    }
-                }
-            };
-        }
-    };
-    
     /**
      * Creates a new {@link TraversalDescription} with default value for
      * everything so that it's OK to call
@@ -349,12 +276,17 @@ public class Traversal
     
     public static SelectorOrderingPolicy alternatingSelectorOrdering()
     {
-        return ALTERNATING_SELECTOR_ORDERING;
+        return CommonSelectorOrdering.ALTERNATING;
     }
     
     public static SelectorOrderingPolicy levelSelectorOrdering()
     {
-        return LEVEL_SELECTOR_ORDERING;
+        return CommonSelectorOrdering.LEVEL;
+    }
+    
+    public static PathCollisionDetector shortestPathsCollisionDetector()
+    {
+        return new ShortestPathsCollisionDetector();
     }
 
     /**
@@ -384,7 +316,7 @@ public class Traversal
         String relationshipRepresentation( T path, Node from,
                 Relationship relationship );
     }
-
+    
     /**
      * The default {@link PathDescriptor} used in common toString()
      * representations in classes implementing {@link Path}.

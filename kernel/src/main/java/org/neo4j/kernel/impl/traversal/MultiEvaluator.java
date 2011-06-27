@@ -27,9 +27,9 @@ public class MultiEvaluator implements Evaluator
 {
     private final Evaluator[] evaluators;
 
-    MultiEvaluator( Evaluator... prunings )
+    MultiEvaluator( Evaluator... evaluators )
     {
-        this.evaluators = prunings;
+        this.evaluators = evaluators;
     }
 
     public Evaluation evaluate( Path position )
@@ -42,14 +42,18 @@ public class MultiEvaluator implements Evaluator
             if ( !bla.includes() )
             {
                 includes = false;
+                if ( !continues && !includes )
+                {
+                    return Evaluation.EXCLUDE_AND_PRUNE;
+                }
             }
             if ( !bla.continues() )
             {
                 continues = false;
-            }
-            if ( !continues && !includes )
-            {
-                return Evaluation.EXCLUDE_AND_PRUNE;
+                if ( !continues && !includes )
+                {
+                    return Evaluation.EXCLUDE_AND_PRUNE;
+                }
             }
         }
         return Evaluation.of( includes, continues );

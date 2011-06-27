@@ -42,15 +42,6 @@ import org.neo4j.kernel.Uniqueness;
 
 public final class TraversalDescriptionImpl implements TraversalDescription
 {
-//    private static final BranchTranslator STANDARD_TRANSLATOR = new BranchTranslator()
-//    {
-//        @Override
-//        public Path translate( TraversalBranch branch )
-//        {
-//            return branch;
-//        }
-//    };
-    
     public TraversalDescriptionImpl()
     {
         this( StandardExpander.DEFAULT, Uniqueness.NODE_GLOBAL, null,
@@ -62,7 +53,6 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     final Object uniquenessParameter;
     final Evaluator evaluator;
     final BranchOrderingPolicy branchSelector;
-//    final BranchTranslator translator;
     final SelectorOrderingPolicy selectorOrdering;
     final PathCollisionDetector collisionDetector;
     final Node endNode;
@@ -223,13 +213,6 @@ public final class TraversalDescriptionImpl implements TraversalDescription
                 uniquenessParameter, evaluator, branchSelector, selectorOrdering, collisionDetector, endNode );
     }
     
-//    @Override
-//    public TraversalDescription translate( BranchTranslator translator )
-//    {
-//        return new TraversalDescriptionImpl( expander, uniqueness, translator, evaluator,
-//                branchSelector, translator, selectorOrdering, endNode );
-//    }
-
     @Override
     public TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering,
             PathCollisionDetector collisionDetector, Node endNode )

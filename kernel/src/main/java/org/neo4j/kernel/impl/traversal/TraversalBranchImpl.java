@@ -27,9 +27,9 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
+import org.neo4j.graphdb.traversal.TraversalContext;
+import org.neo4j.kernel.Traversal;
 
 class TraversalBranchImpl implements TraversalBranch
 {
@@ -59,17 +59,14 @@ class TraversalBranchImpl implements TraversalBranch
     private Iterator<Relationship> relationships;
     private final Relationship howIGotHere;
     private final int depth;
-//    final TraverserIterator traverser;
     private int expandedCount;
     private Evaluation evaluation;
 
     /*
      * For expansion sources for all nodes except the start node
      */
-    TraversalBranchImpl( /*TraverserIterator traverser, */TraversalBranch parent, int depth,
-            Node source, Relationship toHere )
+    TraversalBranchImpl( TraversalBranch parent, int depth, Node source, Relationship toHere )
     {
-//        this.traverser = traverser;
         this.parent = parent;
         this.source = source;
         this.howIGotHere = toHere;
@@ -79,21 +76,20 @@ class TraversalBranchImpl implements TraversalBranch
     @Override
     public String toString()
     {
-        return "TraversalBranch[source=" + source + ",howIGotHere=" + howIGotHere + ",depth=" + depth + "]";
+        return Traversal.defaultPathToString( this );
     }
 
     /*
      * For the start node expansion source
      */
-    TraversalBranchImpl( TraverserIterator traverser, TraversalBranch parent, Node source,
+    TraversalBranchImpl( TraversalContext context, TraversalBranch parent, Node source,
             RelationshipExpander expander )
     {
-//        this.traverser = traverser;
         this.parent = parent;
         this.source = source;
         this.howIGotHere = null;
         this.depth = 0;
-        this.evaluation = traverser.description.evaluator.evaluate( this );
+        this.evaluation = context.evaluate( this );
     }
 
     private void expandRelationships( RelationshipExpander expander )

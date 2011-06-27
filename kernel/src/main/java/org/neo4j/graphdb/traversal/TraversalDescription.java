@@ -159,8 +159,6 @@ public interface TraversalDescription
      */
     TraversalDescription expand( RelationshipExpander expander );
     
-//    TraversalDescription translate( BranchTranslator translator );
-    
     TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering,
             PathCollisionDetector collisionDetector, Node endNode );
 

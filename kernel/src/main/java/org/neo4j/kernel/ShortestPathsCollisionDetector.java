@@ -17,12 +17,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.graphdb.traversal;
+package org.neo4j.kernel;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.Path;
-
-public interface PathCollisionDetector
+public class ShortestPathsCollisionDetector extends AbstractPathCollisionDetector
 {
-    Iterable<Path> evaluate( TraversalBranch branch, Direction direction );
+    private int depth = -1;
+    
+    @Override
+    protected boolean includePath( BidirectionalTraversalBranchPath path )
+    {
+        if ( depth == -1 )
+        {
+            depth = path.length();
+            return true;
+        }
+        return path.length() == depth;
+    }
 }

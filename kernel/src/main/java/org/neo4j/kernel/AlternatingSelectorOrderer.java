@@ -17,12 +17,22 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.graphdb.traversal;
+package org.neo4j.kernel;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalContext;
 
-public interface PathCollisionDetector
+public class AlternatingSelectorOrderer extends AbstractSelectorOrderer<Void>
 {
-    Iterable<Path> evaluate( TraversalBranch branch, Direction direction );
+    public AlternatingSelectorOrderer( BranchSelector startSelector, BranchSelector endSelector )
+    {
+        super( startSelector, endSelector );
+    }
+
+    @Override
+    public TraversalBranch next( TraversalContext metadata )
+    {
+        return nextBranchFromNextSelector( metadata, true );
+    }
 }

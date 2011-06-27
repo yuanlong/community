@@ -21,17 +21,16 @@ package org.neo4j.kernel.impl.traversal;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipExpander;
-import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
+import org.neo4j.graphdb.traversal.TraversalContext;
 
 class StartNodeTraversalBranch extends TraversalBranchImpl
 {
-    StartNodeTraversalBranch( TraverserIterator traverser, TraversalBranch parent, Node source,
+    StartNodeTraversalBranch( TraversalContext context, TraversalBranch parent, Node source,
             RelationshipExpander expander )
     {
-        super( traverser, parent, source, expander );
-        traverser.okToProceedFirst( this );
+        super( context, parent, source, expander );
+        context.okToProceedFirst( this );
     }
 
     @Override
