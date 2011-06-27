@@ -23,8 +23,9 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchSelector;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 
 /**
@@ -37,13 +38,15 @@ class PostorderBreadthFirstSelector implements BranchSelector
 {
     private Iterator<TraversalBranch> sourceIterator;
     private TraversalBranch current;
+    private final RelationshipExpander expander;
     
-    PostorderBreadthFirstSelector( TraversalBranch startSource )
+    PostorderBreadthFirstSelector( TraversalBranch startSource, RelationshipExpander expander )
     {
         this.current = startSource;
+        this.expander = expander;
     }
 
-    public TraversalBranch next( MutableTraversalMetadata metadata )
+    public TraversalBranch next( TraversalContext metadata )
     {
         if ( sourceIterator == null )
         {
@@ -52,10 +55,10 @@ class PostorderBreadthFirstSelector implements BranchSelector
         return sourceIterator.hasNext() ? sourceIterator.next() : null;
     }
 
-    private Iterator<TraversalBranch> gatherSourceIterator( MutableTraversalMetadata metadata )
+    private Iterator<TraversalBranch> gatherSourceIterator( TraversalContext metadata )
     {
         LinkedList<TraversalBranch> queue = new LinkedList<TraversalBranch>();
-        queue.add( current.next( metadata ) );
+        queue.add( current.next( expander, metadata ) );
         while ( true )
         {
             List<TraversalBranch> level = gatherOneLevel( queue, metadata );
@@ -69,7 +72,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
     }
 
     private List<TraversalBranch> gatherOneLevel(
-            List<TraversalBranch> queue, MutableTraversalMetadata metadata )
+            List<TraversalBranch> queue, TraversalContext metadata )
     {
         List<TraversalBranch> level = new LinkedList<TraversalBranch>();
         Integer depth = null;
@@ -86,7 +89,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
             
             while ( true )
             {
-                TraversalBranch next = source.next( metadata );
+                TraversalBranch next = source.next( expander, metadata );
                 if ( next == null )
                 {
                     break;

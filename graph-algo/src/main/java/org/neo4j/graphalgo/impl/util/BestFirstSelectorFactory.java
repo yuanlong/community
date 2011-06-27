@@ -25,18 +25,20 @@ import java.util.Set;
 import org.neo4j.graphalgo.impl.util.PriorityMap.Converter;
 import org.neo4j.graphalgo.impl.util.PriorityMap.Entry;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 
 public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
         implements BranchOrderingPolicy
 {
-    public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
+    public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator,
+            RelationshipExpander expander )
     {
-        return new BestFirstSelector( startSource, getStartData() );
+        return new BestFirstSelector( startSource, getStartData(), expander );
     }
     
     protected abstract P getStartData();
@@ -48,19 +50,21 @@ public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
         private TraversalBranch current;
         private P currentAggregatedValue;
         private final Set<Long> visitedNodes = new HashSet<Long>();
+        private final RelationshipExpander expander;
 
-        public BestFirstSelector( TraversalBranch source, P startData )
+        public BestFirstSelector( TraversalBranch source, P startData, RelationshipExpander expander )
         {
             this.current = source;
             this.currentAggregatedValue = startData;
+            this.expander = expander;
         }
 
-        public TraversalBranch next( MutableTraversalMetadata metadata )
+        public TraversalBranch next( TraversalContext metadata )
         {
             // Exhaust current if not already exhausted
             while ( true )
             {
-                TraversalBranch next = current.next( metadata );
+                TraversalBranch next = current.next( expander, metadata );
                 if ( next != null )
                 {
                     if ( !visitedNodes.contains( next.endNode().getId() ) )

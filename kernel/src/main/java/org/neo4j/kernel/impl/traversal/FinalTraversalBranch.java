@@ -24,8 +24,9 @@ import java.util.Iterator;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 
 public final class FinalTraversalBranch implements TraversalBranch
@@ -49,7 +50,7 @@ public final class FinalTraversalBranch implements TraversalBranch
      * Returns <code>null</code> since {@link FinalTraversalBranch} does not
      * expand.
      */
-    public TraversalBranch next( MutableTraversalMetadata metadata )
+    public TraversalBranch next( RelationshipExpander expander, TraversalContext metadata )
     {
         return null;
     }
@@ -94,7 +95,7 @@ public final class FinalTraversalBranch implements TraversalBranch
         return null;
     }
     
-    public void initialize()
+    public void initialize( RelationshipExpander expander, TraversalContext metadata )
     {
     }
 

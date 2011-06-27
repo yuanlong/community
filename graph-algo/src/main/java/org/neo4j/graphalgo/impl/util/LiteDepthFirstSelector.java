@@ -22,8 +22,9 @@ package org.neo4j.graphalgo.impl.util;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchSelector;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 
 /**
@@ -39,14 +40,16 @@ public class LiteDepthFirstSelector implements BranchSelector
     private final Queue<TraversalBranch> superNodes = new LinkedList<TraversalBranch>();
     private TraversalBranch current;
     private final int threshold;
+    private final RelationshipExpander expander;
     
-    public LiteDepthFirstSelector( TraversalBranch startSource, int startThreshold )
+    public LiteDepthFirstSelector( TraversalBranch startSource, int startThreshold, RelationshipExpander expander )
     {
         this.current = startSource;
         this.threshold = startThreshold;
+        this.expander = expander;
     }
     
-    public TraversalBranch next( MutableTraversalMetadata metadata )
+    public TraversalBranch next( TraversalContext metadata )
     {
         TraversalBranch result = null;
         while ( result == null )
@@ -66,7 +69,7 @@ public class LiteDepthFirstSelector implements BranchSelector
                 continue;
             }
             
-            TraversalBranch next = current.next( metadata );
+            TraversalBranch next = current.next( expander, metadata );
             if ( next == null )
             {
                 current = current.parent();

@@ -22,8 +22,9 @@ package org.neo4j.kernel;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchSelector;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 
 /**
@@ -35,18 +36,20 @@ public class PreorderBreadthFirstSelector implements BranchSelector
 {
     private final Queue<TraversalBranch> queue = new LinkedList<TraversalBranch>();
     private TraversalBranch current;
+    private final RelationshipExpander expander;
     
-    public PreorderBreadthFirstSelector( TraversalBranch startSource )
+    public PreorderBreadthFirstSelector( TraversalBranch startSource, RelationshipExpander expander )
     {
         this.current = startSource;
+        this.expander = expander;
     }
 
-    public TraversalBranch next( MutableTraversalMetadata metadata )
+    public TraversalBranch next( TraversalContext metadata )
     {
         TraversalBranch result = null;
         while ( result == null )
         {
-            TraversalBranch next = current.next( metadata );
+            TraversalBranch next = current.next( expander, metadata );
             if ( next != null )
             {
                 queue.add( next );

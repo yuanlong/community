@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel;
 
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
@@ -28,30 +29,34 @@ public enum CommonBranchOrdering implements BranchOrderingPolicy
 {
     PREORDER_DEPTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator,
+                RelationshipExpander expander )
         {
-            return new PreorderDepthFirstSelector( startSource );
+            return new PreorderDepthFirstSelector( startSource, expander );
         }
     },
     POSTORDER_DEPTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator,
+                RelationshipExpander expander )
         {
-            return new PostorderDepthFirstSelector( startSource );
+            return new PostorderDepthFirstSelector( startSource, expander );
         }
     },
     PREORDER_BREADTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator,
+                RelationshipExpander expander )
         {
-            return new PreorderBreadthFirstSelector( startSource );
+            return new PreorderBreadthFirstSelector( startSource, expander );
         }
     },
     POSTORDER_BREADTH_FIRST
     {
-        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
+        public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator,
+                RelationshipExpander expander )
         {
-            return new PostorderBreadthFirstSelector( startSource );
+            return new PostorderBreadthFirstSelector( startSource, expander );
         }
     };
 }

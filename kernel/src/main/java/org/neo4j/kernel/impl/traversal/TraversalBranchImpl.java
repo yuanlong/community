@@ -27,7 +27,7 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
@@ -67,7 +67,7 @@ class TraversalBranchImpl implements TraversalBranch
      * For expansion sources for all nodes except the start node
      */
     TraversalBranchImpl( /*TraverserIterator traverser, */TraversalBranch parent, int depth,
-            Node source, RelationshipExpander expander, Relationship toHere )
+            Node source, Relationship toHere )
     {
 //        this.traverser = traverser;
         this.parent = parent;
@@ -96,11 +96,11 @@ class TraversalBranchImpl implements TraversalBranch
         this.evaluation = traverser.description.evaluator.evaluate( this );
     }
 
-    private void expandRelationships( TraverserIterator traverser )
+    private void expandRelationships( RelationshipExpander expander )
     {
         if ( evaluation.continues() )
         {
-            expandRelationshipsWithoutChecks( traverser );
+            expandRelationshipsWithoutChecks( expander );
         }
         else
         {
@@ -108,9 +108,9 @@ class TraversalBranchImpl implements TraversalBranch
         }
     }
     
-    protected void expandRelationshipsWithoutChecks( TraverserIterator traverser )
+    protected void expandRelationshipsWithoutChecks( RelationshipExpander expander )
     {
-        relationships = traverser.description.expander.expand( this ).iterator();
+        relationships = expander.expand( this ).iterator();
     }
 
     protected boolean hasExpandedRelationships()
@@ -118,13 +118,13 @@ class TraversalBranchImpl implements TraversalBranch
         return relationships != null;
     }
 
-    public void initialize( TraverserIterator traverser )
+    public void initialize( RelationshipExpander expander, TraversalContext metadata )
     {
-        evaluation = traverser.description.evaluator.evaluate( this );
-        expandRelationships( traverser );
+        evaluation = metadata.evaluate( this );
+        expandRelationships( expander );
     }
 
-    public TraversalBranch next( TraverserIterator traverser, MutableTraversalMetadata metadata )
+    public TraversalBranch next( RelationshipExpander expander, TraversalContext metadata )
     {
         while ( relationships.hasNext() )
         {
@@ -136,12 +136,12 @@ class TraversalBranchImpl implements TraversalBranch
             }
             expandedCount++;
             Node node = relationship.getOtherNode( source );
-            TraversalBranch next = new TraversalBranchImpl( traverser, this, depth + 1, node,
-                    traverser.description.expander, relationship );
-            if ( traverser.okToProceed( next ) )
+            TraversalBranch next = new TraversalBranchImpl( this, depth + 1, node,
+                    relationship );
+            if ( metadata.okToProceed( next ) )
             {
                 metadata.relationshipTraversed();
-                next.initialize();
+                next.initialize( expander, metadata );
                 return next;
             }
             else

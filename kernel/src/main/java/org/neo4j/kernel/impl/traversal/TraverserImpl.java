@@ -31,9 +31,10 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.PathCollisionDetector;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
@@ -105,7 +106,7 @@ class TraverserImpl implements Traverser
     }
 
     class TraverserIterator extends PrefetchingIterator<Path>
-            implements TraversalBranchCreator, MutableTraversalMetadata
+            implements TraversalBranchCreator, TraversalContext
     {
         final UniquenessFilter uniqueness;
         final BranchSelector selector;
@@ -152,17 +153,23 @@ class TraverserImpl implements Traverser
         protected BranchSelector instantiateSelector( TraversalDescriptionImpl description )
         {
             return description.branchSelector.create(
-                    new AsOneStartBranch( this, startNodes ), this );
+                    new AsOneStartBranch( this, startNodes ), this, description.expander );
         }
 
-        boolean okToProceedFirst( TraversalBranch source )
+        public boolean okToProceedFirst( TraversalBranch source )
         {
             return this.uniqueness.checkFirst( source );
         }
 
-        boolean okToProceed( TraversalBranch source )
+        public boolean okToProceed( TraversalBranch source )
         {
             return this.uniqueness.check( source );
+        }
+        
+        @Override
+        public Evaluation evaluate( TraversalBranch branch )
+        {
+            return description.evaluator.evaluate( branch );
         }
         
         @Override
@@ -203,9 +210,9 @@ class TraverserImpl implements Traverser
         protected BranchSelector instantiateSelector( TraversalDescriptionImpl description )
         {
             BranchSelector startSelector = description.branchSelector.create(
-                    new AsOneStartBranch( this, startNodes ), this );
+                    new AsOneStartBranch( this, startNodes ), this, description.expander );
             BranchSelector endSelector = description.branchSelector.create(
-                    new AsOneStartBranch( this, asList( description.endNode ) ), this );
+                    new AsOneStartBranch( this, asList( description.endNode ) ), this, description.expander.reversed() );
             this.collisionDetector = description.collisionDetector;
             return description.selectorOrdering.create( startSelector, endSelector );
         }
@@ -300,12 +307,12 @@ class TraverserImpl implements Traverser
         }
 
         @Override
-        public TraversalBranch next( MutableTraversalMetadata metadata )
+        public TraversalBranch next( RelationshipExpander expander, TraversalContext metadata )
         {
             if ( branches.hasNext() )
             {
                 expanded++;
-                return branches.next().next( metadata );
+                return branches.next().next( expander, metadata );
             }
             return null;
         }
@@ -323,7 +330,7 @@ class TraverserImpl implements Traverser
         }
 
         @Override
-        public void initialize()
+        public void initialize( RelationshipExpander expander, TraversalContext metadata )
         {
         }
 

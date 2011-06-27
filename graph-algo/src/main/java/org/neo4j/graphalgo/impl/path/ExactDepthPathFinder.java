@@ -90,10 +90,11 @@ public class ExactDepthPathFinder implements PathFinder<Path>
         TraversalDescription base = traversal().uniqueness( Uniqueness.RELATIONSHIP_PATH ).order(
                 new BranchOrderingPolicy()
                 {
-                    public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator )
+                    public BranchSelector create( TraversalBranch startSource, TraversalBranchCreator branchCreator,
+                            RelationshipExpander expander )
                     {
                         return new LiteDepthFirstSelector( startSource,
-                                startThreshold );
+                                startThreshold, expander );
                     }
                 } );
         final int firstHalf = onDepth / 2;

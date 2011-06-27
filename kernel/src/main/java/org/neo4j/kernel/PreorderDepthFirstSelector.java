@@ -19,8 +19,9 @@
  */
 package org.neo4j.kernel;
 
+import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchSelector;
-import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 
 /**
@@ -31,13 +32,15 @@ import org.neo4j.graphdb.traversal.TraversalBranch;
 class PreorderDepthFirstSelector implements BranchSelector
 {
     private TraversalBranch current;
+    private final RelationshipExpander expander;
     
-    PreorderDepthFirstSelector( TraversalBranch startSource )
+    PreorderDepthFirstSelector( TraversalBranch startSource, RelationshipExpander expander )
     {
         this.current = startSource;
+        this.expander = expander;
     }
     
-    public TraversalBranch next( MutableTraversalMetadata metadata )
+    public TraversalBranch next( TraversalContext metadata )
     {
         TraversalBranch result = null;
         while ( result == null )
@@ -46,7 +49,7 @@ class PreorderDepthFirstSelector implements BranchSelector
             {
                 return null;
             }
-            TraversalBranch next = current.next( metadata );
+            TraversalBranch next = current.next( expander, metadata );
             if ( next == null )
             {
                 current = current.parent();
