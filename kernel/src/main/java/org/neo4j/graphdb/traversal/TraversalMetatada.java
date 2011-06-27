@@ -19,7 +19,9 @@
  */
 package org.neo4j.graphdb.traversal;
 
-public interface SelectorOrderingPolicy
+public interface TraversalMetatada
 {
-    SelectorOrderer create( BranchSelector start, BranchSelector end );
+    int getNumberOfPathsReturned();
+    
+    int getNumberOfRelationshipsTraversed();
 }

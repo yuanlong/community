@@ -41,7 +41,7 @@ public interface TraversalBranch extends Path
      *
      * @return the next expansion source from this expansion source.
      */
-    TraversalBranch next();
+    TraversalBranch next( TraversalMetatada metadata );
 
     /**
      * Returns the number of relationships this expansion source has expanded.
@@ -52,6 +52,12 @@ public interface TraversalBranch extends Path
      * @return the number of relationships this expansion source has expanded.
      */
     int expanded();
+    
+    /**
+     * Explicitly tell this branch to be pruned so that consecutive calls to
+     * {@link #next()} is guaranteed to return {@code null}.
+     */
+    void prune();
     
     Evaluation evaluation();
     

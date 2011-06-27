@@ -29,6 +29,7 @@ import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
+import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
         implements BranchOrderingPolicy
@@ -54,12 +55,12 @@ public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
             this.currentAggregatedValue = startData;
         }
 
-        public TraversalBranch next()
+        public TraversalBranch next( TraversalMetatada metadata )
         {
             // Exhaust current if not already exhausted
             while ( true )
             {
-                TraversalBranch next = current.next();
+                TraversalBranch next = current.next( metadata );
                 if ( next != null )
                 {
                     if ( !visitedNodes.contains( next.endNode().getId() ) )

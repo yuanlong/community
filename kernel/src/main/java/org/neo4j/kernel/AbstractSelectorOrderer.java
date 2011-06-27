@@ -1,16 +1,36 @@
+/**
+ * Copyright (c) 2002-2011 "Neo Technology,"
+ * Network Engine for Objects in Lund AB [http://neotechnology.com]
+ *
+ * This file is part of Neo4j.
+ *
+ * Neo4j is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package org.neo4j.kernel;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 public abstract class AbstractSelectorOrderer<T> implements SelectorOrderer
 {
     private static final BranchSelector EMPTY_SELECTOR = new BranchSelector()
     {
         @Override
-        public TraversalBranch next()
+        public TraversalBranch next( TraversalMetatada metadata )
         {
             return null;
         }
@@ -43,26 +63,28 @@ public abstract class AbstractSelectorOrderer<T> implements SelectorOrderer
         return states[selectorIndex];
     }
     
-    protected TraversalBranch nextBranchFromCurrentSelector( boolean switchIfExhausted )
-    {
-        return nextBranchFromSelector( selectors[selectorIndex], switchIfExhausted );
-    }
-    
-    protected TraversalBranch nextBranchFromNextSelector( boolean switchIfExhausted )
-    {
-        return nextBranchFromSelector( nextSelector(), switchIfExhausted );
-    }
-    
-    private TraversalBranch nextBranchFromSelector( BranchSelector selector,
+    protected TraversalBranch nextBranchFromCurrentSelector( TraversalMetatada metadata,
             boolean switchIfExhausted )
     {
-        TraversalBranch result = selector.next();
+        return nextBranchFromSelector( metadata, selectors[selectorIndex], switchIfExhausted );
+    }
+    
+    protected TraversalBranch nextBranchFromNextSelector( TraversalMetatada metadata,
+            boolean switchIfExhausted )
+    {
+        return nextBranchFromSelector( metadata, nextSelector(), switchIfExhausted );
+    }
+    
+    private TraversalBranch nextBranchFromSelector( TraversalMetatada metadata,
+            BranchSelector selector, boolean switchIfExhausted )
+    {
+        TraversalBranch result = selector.next( metadata );
         if ( result == null )
         {
             selectors[selectorIndex] = EMPTY_SELECTOR;
             if ( switchIfExhausted )
             {
-                result = nextSelector().next();
+                result = nextSelector().next( metadata );
                 if ( result == null )
                 {
                     selectors[selectorIndex] = EMPTY_SELECTOR;
@@ -83,5 +105,10 @@ public abstract class AbstractSelectorOrderer<T> implements SelectorOrderer
     public Direction currentSelector()
     {
         return selectorIndex == 0 ? Direction.OUTGOING : Direction.INCOMING;
+    }
+    
+    protected void endCurrentSelector()
+    {
+        selectors[selectorIndex] = EMPTY_SELECTOR;
     }
 }

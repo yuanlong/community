@@ -55,7 +55,7 @@ public class TestShortestPath extends Neo4jAlgoTestCase
     protected PathFinder<Path> instantiatePathFinder( RelationshipExpander expander, int maxDepth )
     {
 //        return GraphAlgoFactory.shortestPath( expander, maxDepth );
-        return new TraversalShortestPath( expander );
+        return new TraversalShortestPath( expander, maxDepth );
     }
     
     @Test
@@ -71,8 +71,7 @@ public class TestShortestPath extends Neo4jAlgoTestCase
 
         PathFinder<Path> finder = instantiatePathFinder( 1 );
         Iterable<Path> paths = finder.findAllPaths( graph.getNode( "s" ), graph.getNode( "t" ) );
-        for ( Path path : paths ) System.out.println( Traversal.simplePathToString( path, "name" ) );
-//        assertPaths( paths, "s,t", "s,t" );
+        assertPaths( paths, "s,t", "s,t" );
     }
     
     @Test

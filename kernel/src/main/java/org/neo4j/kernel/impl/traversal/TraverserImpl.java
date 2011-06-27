@@ -23,6 +23,7 @@ import static java.util.Arrays.asList;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -37,13 +38,13 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
+import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFilter;
 import org.neo4j.helpers.collection.CombiningIterator;
 import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.BidirectionalTraversalBranchPath;
-import org.neo4j.kernel.Traversal;
 
 class TraverserImpl implements Traverser
 {
@@ -105,17 +106,31 @@ class TraverserImpl implements Traverser
         };
     }
 
-    class TraverserIterator extends PrefetchingIterator<Path> implements TraversalBranchCreator
+    class TraverserIterator extends PrefetchingIterator<Path>
+            implements TraversalBranchCreator, TraversalMetatada
     {
         final UniquenessFilter uniqueness;
         final BranchSelector selector;
         final TraversalDescriptionImpl description;
+        int numberOfPathsReturned;
 
         TraverserIterator()
         {
             this.description = TraverserImpl.this.description;
             this.uniqueness = description.uniqueness.create( description.uniquenessParameter );
             this.selector = instantiateSelector( description );
+        }
+        
+        @Override
+        public int getNumberOfPathsReturned()
+        {
+            return numberOfPathsReturned;
+        }
+        
+        @Override
+        public int getNumberOfRelationshipsTraversed()
+        {
+            return 0;
         }
         
         protected BranchSelector selector()
@@ -154,13 +169,14 @@ class TraverserImpl implements Traverser
             TraversalBranch result = null;
             while ( true )
             {
-                result = selector.next();
+                result = selector.next( this );
                 if ( result == null )
                 {
                     return null;
                 }
                 if ( result.evaluation().includes() )
                 {
+                    numberOfPathsReturned++;
                     return result;
                 }
             }
@@ -195,6 +211,8 @@ class TraverserImpl implements Traverser
             {
                 if ( foundPaths.hasNext() )
                 {
+                    System.out.println( "returning path" );
+                    numberOfPathsReturned++;
                     return foundPaths.next();
                 }
                 foundPaths = null;
@@ -204,7 +222,7 @@ class TraverserImpl implements Traverser
             SelectorOrderer selector = selector();
             while ( true )
             {
-                result = selector.next();
+                result = selector.next( this );
                 if ( result == null )
                 {
                     return null;
@@ -213,6 +231,8 @@ class TraverserImpl implements Traverser
                 if ( pathCollisions != null )
                 {
                     foundPaths = pathCollisions.iterator();
+                    numberOfPathsReturned++;
+                    System.out.println( "returning path" );
                     return foundPaths.next();
                 }
             }
@@ -237,20 +257,20 @@ class TraverserImpl implements Traverser
                 paths.put( branch.endNode(), pathsHere );
             }
             pathsHere[index].add( branch );
-            System.out.println( "+" + branch.endNode() + ", " + pathsHere[0] + ", " + pathsHere[1] );
             
             // If there are paths from the other side then include all the
             // combined paths
             Collection<TraversalBranch> otherCollections = pathsHere[index==0?1:0];
             if ( !otherCollections.isEmpty() )
             {
+                branch.prune();
                 Collection<Path> foundPaths = new ArrayList<Path>();
                 for ( TraversalBranch otherPath : otherCollections )
                 {
+                    otherPath.prune();
                     TraversalBranch startPath = index == 0 ? branch : otherPath;
                     TraversalBranch endPath = index == 0 ? otherPath : branch;
                     BidirectionalTraversalBranchPath path = new BidirectionalTraversalBranchPath( startPath, endPath );
-                    System.out.println( "=> " + Traversal.simplePathToString( path, "__simpleGraphBuilderId__" ) );
                     foundPaths.add( path );
                 }
                 return foundPaths;
@@ -262,7 +282,7 @@ class TraverserImpl implements Traverser
     private static class AsOneStartBranch implements TraversalBranch
     {
         private final TraverserIterator traverser;
-        private final Iterator<TraversalBranch> branches;
+        private Iterator<TraversalBranch> branches;
         private int expanded;
 
         AsOneStartBranch( TraverserIterator traverser, Collection<Node> nodes )
@@ -308,12 +328,12 @@ class TraverserImpl implements Traverser
         }
 
         @Override
-        public TraversalBranch next()
+        public TraversalBranch next( TraversalMetatada metadata )
         {
             if ( branches.hasNext() )
             {
                 expanded++;
-                return branches.next().next();
+                return branches.next().next( metadata );
             }
             return null;
         }
@@ -357,6 +377,12 @@ class TraverserImpl implements Traverser
         public Iterator<PropertyContainer> iterator()
         {
             return null;
+        }
+        
+        @Override
+        public void prune()
+        {
+            branches = Collections.<TraversalBranch>emptyList().iterator();
         }
     }
 }

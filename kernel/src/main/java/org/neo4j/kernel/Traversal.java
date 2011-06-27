@@ -37,6 +37,7 @@ import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.impl.traversal.FinalTraversalBranch;
@@ -58,9 +59,9 @@ public class Traversal
             return new AbstractSelectorOrderer<Void>( start, end )
             {
                 @Override
-                public TraversalBranch next()
+                public TraversalBranch next( TraversalMetatada metadata )
                 {
-                    return nextBranchFromNextSelector( true );
+                    return nextBranchFromNextSelector( metadata, true );
                 }
             };
         }
@@ -80,10 +81,9 @@ public class Traversal
                 }
                 
                 @Override
-                public TraversalBranch next()
+                public TraversalBranch next( TraversalMetatada metadata )
                 {
-                    TraversalBranch branch = nextBranchFromCurrentSelector( true );
-                    System.out.println( currentSelector() + ": " + branch );
+                    TraversalBranch branch = nextBranchFromCurrentSelector( metadata, false );
                     Pair<AtomicInteger,Queue<TraversalBranch>> state = getStateForCurrentSelector();
                     AtomicInteger previousDepth = state.first();
                     if ( branch != null && branch.length() == previousDepth.get() )
@@ -92,22 +92,24 @@ public class Traversal
                     }
                     else
                     {
+                        if ( metadata.getNumberOfPathsReturned() > 0 )
+                        {
+                            return null;
+                        }
+                        
                         if ( branch != null )
                         {
                             previousDepth.set( branch.length() );
                             state.other().add( branch );
-                            System.out.println( "put on hold " + branch );
                         }
                         BranchSelector otherSelector = nextSelector();
                         TraversalBranch otherBranch = getStateForCurrentSelector().other().poll();
-                        System.out.println( "from held " + currentSelector() + ": " + otherBranch );
                         if ( otherBranch != null )
                         {
                             return otherBranch;
                         }
 
-                        otherBranch = otherSelector.next();
-                        System.out.println( "other " + currentSelector() + ": " + otherBranch );
+                        otherBranch = otherSelector.next( metadata );
                         return otherBranch != null ? otherBranch : branch;
                     }
                 }

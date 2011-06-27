@@ -28,6 +28,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
 class TraversalBranchImpl implements TraversalBranch
@@ -78,7 +79,7 @@ class TraversalBranchImpl implements TraversalBranch
     @Override
     public String toString()
     {
-        return "TraversalBranch[source=" + source + "," + source.getProperty( "__simpleGraphBuilderId__" ) + ",howIGotHere=" + howIGotHere + ",depth=" + depth + "]";
+        return "TraversalBranch[source=" + source + ",howIGotHere=" + howIGotHere + ",depth=" + depth + "]";
     }
 
     /*
@@ -123,7 +124,7 @@ class TraversalBranchImpl implements TraversalBranch
         expandRelationships();
     }
 
-    public TraversalBranch next()
+    public TraversalBranch next( TraversalMetatada metadata )
     {
         while ( relationships.hasNext() )
         {
@@ -145,6 +146,12 @@ class TraversalBranchImpl implements TraversalBranch
         // Just to help GC
         relationships = PRUNED_ITERATOR;
         return null;
+    }
+    
+    @Override
+    public void prune()
+    {
+        relationships = PRUNED_ITERATOR;
     }
 
     public int length()

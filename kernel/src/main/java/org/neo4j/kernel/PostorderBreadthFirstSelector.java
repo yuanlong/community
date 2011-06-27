@@ -25,6 +25,7 @@ import java.util.List;
 
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
+import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 /**
  * Selects {@link TraversalBranch}s according to postorder breadth first
@@ -42,22 +43,22 @@ class PostorderBreadthFirstSelector implements BranchSelector
         this.current = startSource;
     }
 
-    public TraversalBranch next()
+    public TraversalBranch next( TraversalMetatada metadata )
     {
         if ( sourceIterator == null )
         {
-            sourceIterator = gatherSourceIterator();
+            sourceIterator = gatherSourceIterator( metadata );
         }
         return sourceIterator.hasNext() ? sourceIterator.next() : null;
     }
 
-    private Iterator<TraversalBranch> gatherSourceIterator()
+    private Iterator<TraversalBranch> gatherSourceIterator( TraversalMetatada metadata )
     {
         LinkedList<TraversalBranch> queue = new LinkedList<TraversalBranch>();
-        queue.add( current.next() );
+        queue.add( current.next( metadata ) );
         while ( true )
         {
-            List<TraversalBranch> level = gatherOneLevel( queue );
+            List<TraversalBranch> level = gatherOneLevel( queue, metadata );
             if ( level.isEmpty() )
             {
                 break;
@@ -68,7 +69,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
     }
 
     private List<TraversalBranch> gatherOneLevel(
-            List<TraversalBranch> queue )
+            List<TraversalBranch> queue, TraversalMetatada metadata )
     {
         List<TraversalBranch> level = new LinkedList<TraversalBranch>();
         Integer depth = null;
@@ -85,7 +86,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
             
             while ( true )
             {
-                TraversalBranch next = source.next();
+                TraversalBranch next = source.next( metadata );
                 if ( next == null )
                 {
                     break;
