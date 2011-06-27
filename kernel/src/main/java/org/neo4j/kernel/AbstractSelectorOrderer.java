@@ -21,16 +21,16 @@ package org.neo4j.kernel;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 public abstract class AbstractSelectorOrderer<T> implements SelectorOrderer
 {
     private static final BranchSelector EMPTY_SELECTOR = new BranchSelector()
     {
         @Override
-        public TraversalBranch next( TraversalMetatada metadata )
+        public TraversalBranch next( MutableTraversalMetadata metadata )
         {
             return null;
         }
@@ -63,19 +63,19 @@ public abstract class AbstractSelectorOrderer<T> implements SelectorOrderer
         return states[selectorIndex];
     }
     
-    protected TraversalBranch nextBranchFromCurrentSelector( TraversalMetatada metadata,
+    protected TraversalBranch nextBranchFromCurrentSelector( MutableTraversalMetadata metadata,
             boolean switchIfExhausted )
     {
         return nextBranchFromSelector( metadata, selectors[selectorIndex], switchIfExhausted );
     }
     
-    protected TraversalBranch nextBranchFromNextSelector( TraversalMetatada metadata,
+    protected TraversalBranch nextBranchFromNextSelector( MutableTraversalMetadata metadata,
             boolean switchIfExhausted )
     {
         return nextBranchFromSelector( metadata, nextSelector(), switchIfExhausted );
     }
     
-    private TraversalBranch nextBranchFromSelector( TraversalMetatada metadata,
+    private TraversalBranch nextBranchFromSelector( MutableTraversalMetadata metadata,
             BranchSelector selector, boolean switchIfExhausted )
     {
         TraversalBranch result = selector.next( metadata );

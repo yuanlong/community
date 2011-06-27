@@ -27,9 +27,9 @@ import org.neo4j.graphalgo.impl.util.PriorityMap.Entry;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
         implements BranchOrderingPolicy
@@ -55,7 +55,7 @@ public abstract class BestFirstSelectorFactory<P extends Comparable<P>, D>
             this.currentAggregatedValue = startData;
         }
 
-        public TraversalBranch next( TraversalMetatada metadata )
+        public TraversalBranch next( MutableTraversalMetadata metadata )
         {
             // Exhaust current if not already exhausted
             while ( true )

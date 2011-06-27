@@ -35,10 +35,10 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFilter;
 import org.neo4j.helpers.collection.CombiningIterator;
@@ -107,12 +107,13 @@ class TraverserImpl implements Traverser
     }
 
     class TraverserIterator extends PrefetchingIterator<Path>
-            implements TraversalBranchCreator, TraversalMetatada
+            implements TraversalBranchCreator, MutableTraversalMetadata
     {
         final UniquenessFilter uniqueness;
         final BranchSelector selector;
         final TraversalDescriptionImpl description;
         int numberOfPathsReturned;
+        int numberOfRelationshipsTraversed;
 
         TraverserIterator()
         {
@@ -131,6 +132,18 @@ class TraverserImpl implements Traverser
         public int getNumberOfRelationshipsTraversed()
         {
             return 0;
+        }
+        
+        @Override
+        public void relationshipTraversed()
+        {
+            numberOfRelationshipsTraversed++;
+        }
+        
+        @Override
+        public void unnecessaryRelationshipTraversed()
+        {
+            numberOfRelationshipsTraversed++;
         }
         
         protected BranchSelector selector()
@@ -328,7 +341,7 @@ class TraverserImpl implements Traverser
         }
 
         @Override
-        public TraversalBranch next( TraversalMetatada metadata )
+        public TraversalBranch next( MutableTraversalMetadata metadata )
         {
             if ( branches.hasNext() )
             {

@@ -23,8 +23,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 /**
  * A preorder depth first selector which detects "super nodes", i.e. nodes
@@ -46,7 +46,7 @@ public class LiteDepthFirstSelector implements BranchSelector
         this.threshold = startThreshold;
     }
     
-    public TraversalBranch next( TraversalMetatada metadata )
+    public TraversalBranch next( MutableTraversalMetadata metadata )
     {
         TraversalBranch result = null;
         while ( result == null )

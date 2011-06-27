@@ -20,8 +20,8 @@
 package org.neo4j.kernel;
 
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 /**
  * Selects {@link TraversalBranch}s according to preorder depth first pattern,
@@ -37,7 +37,7 @@ class PreorderDepthFirstSelector implements BranchSelector
         this.current = startSource;
     }
     
-    public TraversalBranch next( TraversalMetatada metadata )
+    public TraversalBranch next( MutableTraversalMetadata metadata )
     {
         TraversalBranch result = null;
         while ( result == null )

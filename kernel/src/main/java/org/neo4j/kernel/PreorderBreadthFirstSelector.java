@@ -23,8 +23,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 /**
  * Selects {@link TraversalBranch}s according to breadth first
@@ -41,7 +41,7 @@ public class PreorderBreadthFirstSelector implements BranchSelector
         this.current = startSource;
     }
 
-    public TraversalBranch next( TraversalMetatada metadata )
+    public TraversalBranch next( MutableTraversalMetadata metadata )
     {
         TraversalBranch result = null;
         while ( result == null )

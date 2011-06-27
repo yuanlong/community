@@ -24,8 +24,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 
 /**
  * Selects {@link TraversalBranch}s according to postorder breadth first
@@ -43,7 +43,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
         this.current = startSource;
     }
 
-    public TraversalBranch next( TraversalMetatada metadata )
+    public TraversalBranch next( MutableTraversalMetadata metadata )
     {
         if ( sourceIterator == null )
         {
@@ -52,7 +52,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
         return sourceIterator.hasNext() ? sourceIterator.next() : null;
     }
 
-    private Iterator<TraversalBranch> gatherSourceIterator( TraversalMetatada metadata )
+    private Iterator<TraversalBranch> gatherSourceIterator( MutableTraversalMetadata metadata )
     {
         LinkedList<TraversalBranch> queue = new LinkedList<TraversalBranch>();
         queue.add( current.next( metadata ) );
@@ -69,7 +69,7 @@ class PostorderBreadthFirstSelector implements BranchSelector
     }
 
     private List<TraversalBranch> gatherOneLevel(
-            List<TraversalBranch> queue, TraversalMetatada metadata )
+            List<TraversalBranch> queue, MutableTraversalMetadata metadata )
     {
         List<TraversalBranch> level = new LinkedList<TraversalBranch>();
         Integer depth = null;

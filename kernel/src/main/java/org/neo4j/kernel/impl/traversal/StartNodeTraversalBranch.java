@@ -21,8 +21,8 @@ package org.neo4j.kernel.impl.traversal;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipExpander;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
 class StartNodeTraversalBranch extends TraversalBranchImpl
@@ -35,7 +35,7 @@ class StartNodeTraversalBranch extends TraversalBranchImpl
     }
 
     @Override
-    public TraversalBranch next( TraversalMetatada metadata )
+    public TraversalBranch next( MutableTraversalMetadata metadata )
     {
         if ( !hasExpandedRelationships() )
         {

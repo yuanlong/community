@@ -27,8 +27,8 @@ import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.TraversalBranch;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.kernel.impl.traversal.TraverserImpl.TraverserIterator;
 
 class TraversalBranchImpl implements TraversalBranch
@@ -124,13 +124,14 @@ class TraversalBranchImpl implements TraversalBranch
         expandRelationships();
     }
 
-    public TraversalBranch next( TraversalMetatada metadata )
+    public TraversalBranch next( MutableTraversalMetadata metadata )
     {
         while ( relationships.hasNext() )
         {
             Relationship relationship = relationships.next();
             if ( relationship.equals( howIGotHere ) )
             {
+                metadata.unnecessaryRelationshipTraversed();
                 continue;
             }
             expandedCount++;
@@ -139,8 +140,13 @@ class TraversalBranchImpl implements TraversalBranch
                     traverser.description.expander, relationship );
             if ( traverser.okToProceed( next ) )
             {
+                metadata.relationshipTraversed();
                 next.initialize();
                 return next;
+            }
+            else
+            {
+                metadata.unnecessaryRelationshipTraversed();
             }
         }
         // Just to help GC

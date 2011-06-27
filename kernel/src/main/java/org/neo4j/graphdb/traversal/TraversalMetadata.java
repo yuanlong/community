@@ -19,7 +19,7 @@
  */
 package org.neo4j.graphdb.traversal;
 
-public interface TraversalMetatada
+public interface TraversalMetadata
 {
     int getNumberOfPathsReturned();
     

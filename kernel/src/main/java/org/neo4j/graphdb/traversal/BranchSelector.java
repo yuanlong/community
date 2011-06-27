@@ -38,5 +38,5 @@ public interface BranchSelector
      * @return the next position based on the current position and the
      * {@code rules} of the traversal.
      */
-    TraversalBranch next( TraversalMetatada metadata );
+    TraversalBranch next( MutableTraversalMetadata metadata );
 }

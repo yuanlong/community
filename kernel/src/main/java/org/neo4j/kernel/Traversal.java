@@ -33,11 +33,11 @@ import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.BranchSelector;
+import org.neo4j.graphdb.traversal.MutableTraversalMetadata;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.TraversalMetatada;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Predicate;
 import org.neo4j.kernel.impl.traversal.FinalTraversalBranch;
@@ -59,7 +59,7 @@ public class Traversal
             return new AbstractSelectorOrderer<Void>( start, end )
             {
                 @Override
-                public TraversalBranch next( TraversalMetatada metadata )
+                public TraversalBranch next( MutableTraversalMetadata metadata )
                 {
                     return nextBranchFromNextSelector( metadata, true );
                 }
@@ -81,7 +81,7 @@ public class Traversal
                 }
                 
                 @Override
-                public TraversalBranch next( TraversalMetatada metadata )
+                public TraversalBranch next( MutableTraversalMetadata metadata )
                 {
                     TraversalBranch branch = nextBranchFromCurrentSelector( metadata, false );
                     Pair<AtomicInteger,Queue<TraversalBranch>> state = getStateForCurrentSelector();

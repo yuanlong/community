@@ -41,7 +41,7 @@ public interface TraversalBranch extends Path
      *
      * @return the next expansion source from this expansion source.
      */
-    TraversalBranch next( TraversalMetatada metadata );
+    TraversalBranch next( MutableTraversalMetadata metadata );
 
     /**
      * Returns the number of relationships this expansion source has expanded.
