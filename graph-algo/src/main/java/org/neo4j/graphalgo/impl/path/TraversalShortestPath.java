@@ -27,6 +27,8 @@ import org.neo4j.graphalgo.PathFinder;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.RelationshipExpander;
+import org.neo4j.graphdb.traversal.PathCollisionDetector;
+import org.neo4j.kernel.ShortestPathCollisionDetector;
 import org.neo4j.kernel.Uniqueness;
 
 public class TraversalShortestPath implements PathFinder<Path>
@@ -47,7 +49,8 @@ public class TraversalShortestPath implements PathFinder<Path>
     @Override
     public Iterable<Path> findAllPaths( final Node start, final Node end )
     {
+        PathCollisionDetector collisionDetector = new ShortestPathCollisionDetector();
         return traversal().breadthFirst().uniqueness( Uniqueness.RELATIONSHIP_GLOBAL ).expand( expander )
-                .bidirectional( levelSelectorOrdering(), end ).traverse( start );
+                .bidirectional( levelSelectorOrdering(), collisionDetector, end ).traverse( start );
     }
 }

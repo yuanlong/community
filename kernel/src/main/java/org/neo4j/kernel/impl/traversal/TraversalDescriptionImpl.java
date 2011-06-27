@@ -31,6 +31,7 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.BranchOrderingPolicy;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.PathCollisionDetector;
 import org.neo4j.graphdb.traversal.SelectorOrderingPolicy;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
@@ -53,7 +54,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     public TraversalDescriptionImpl()
     {
         this( StandardExpander.DEFAULT, Uniqueness.NODE_GLOBAL, null,
-                Evaluators.all(), Traversal.preorderDepthFirst(), null, null );
+                Evaluators.all(), Traversal.preorderDepthFirst(), null, null, null );
     }
 
     final Expander expander;
@@ -63,12 +64,14 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     final BranchOrderingPolicy branchSelector;
 //    final BranchTranslator translator;
     final SelectorOrderingPolicy selectorOrdering;
+    final PathCollisionDetector collisionDetector;
     final Node endNode;
 
     private TraversalDescriptionImpl( Expander expander,
             UniquenessFactory uniqueness, Object uniquenessParameter,
             Evaluator evaluator, BranchOrderingPolicy branchSelector,
-            SelectorOrderingPolicy selectorOrdering, Node endNode )
+            SelectorOrderingPolicy selectorOrdering, PathCollisionDetector collisionDetector,
+            Node endNode )
     {
         this.expander = expander;
         this.uniqueness = uniqueness;
@@ -76,6 +79,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
         this.evaluator = evaluator;
         this.branchSelector = branchSelector;
         this.selectorOrdering = selectorOrdering;
+        this.collisionDetector = collisionDetector;
         this.endNode = endNode;
     }
 
@@ -101,7 +105,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
     public TraversalDescription uniqueness( UniquenessFactory uniqueness )
     {
         return new TraversalDescriptionImpl( expander, uniqueness, null,
-                evaluator, branchSelector, selectorOrdering, endNode );
+                evaluator, branchSelector, selectorOrdering, collisionDetector, endNode );
     }
 
     /* (non-Javadoc)
@@ -120,7 +124,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
         }
 
         return new TraversalDescriptionImpl( expander, uniqueness, parameter,
-                evaluator, branchSelector, selectorOrdering, endNode );
+                evaluator, branchSelector, selectorOrdering, collisionDetector, endNode );
     }
     
     public TraversalDescription evaluator( Evaluator evaluator )
@@ -131,7 +135,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
         }
         nullCheck( evaluator, Evaluator.class, "RETURN_ALL" );
         return new TraversalDescriptionImpl( expander, uniqueness, uniquenessParameter,
-                addEvaluator( evaluator ), branchSelector, selectorOrdering, endNode );
+                addEvaluator( evaluator ), branchSelector, selectorOrdering, collisionDetector, endNode );
     }
     
     private Evaluator addEvaluator( Evaluator evaluator )
@@ -176,7 +180,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
             return this;
         }
         return new TraversalDescriptionImpl( expander, uniqueness, uniquenessParameter,
-                evaluator, selector, selectorOrdering, endNode );
+                evaluator, selector, selectorOrdering, collisionDetector, endNode );
     }
 
     public TraversalDescription depthFirst()
@@ -216,7 +220,7 @@ public final class TraversalDescriptionImpl implements TraversalDescription
             return this;
         }
         return new TraversalDescriptionImpl( Traversal.expander( expander ), uniqueness,
-                uniquenessParameter, evaluator, branchSelector, selectorOrdering, endNode );
+                uniquenessParameter, evaluator, branchSelector, selectorOrdering, collisionDetector, endNode );
     }
     
 //    @Override
@@ -227,9 +231,10 @@ public final class TraversalDescriptionImpl implements TraversalDescription
 //    }
 
     @Override
-    public TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering, Node endNode )
+    public TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering,
+            PathCollisionDetector collisionDetector, Node endNode )
     {
         return new TraversalDescriptionImpl( expander, uniqueness, uniquenessParameter, evaluator,
-                branchSelector, selectorOrdering, endNode );
+                branchSelector, selectorOrdering, collisionDetector, endNode );
     }
 }

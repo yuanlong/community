@@ -59,17 +59,17 @@ class TraversalBranchImpl implements TraversalBranch
     private Iterator<Relationship> relationships;
     private final Relationship howIGotHere;
     private final int depth;
-    final TraverserIterator traverser;
+//    final TraverserIterator traverser;
     private int expandedCount;
     private Evaluation evaluation;
 
     /*
      * For expansion sources for all nodes except the start node
      */
-    TraversalBranchImpl( TraverserIterator traverser, TraversalBranch parent, int depth,
+    TraversalBranchImpl( /*TraverserIterator traverser, */TraversalBranch parent, int depth,
             Node source, RelationshipExpander expander, Relationship toHere )
     {
-        this.traverser = traverser;
+//        this.traverser = traverser;
         this.parent = parent;
         this.source = source;
         this.howIGotHere = toHere;
@@ -88,7 +88,7 @@ class TraversalBranchImpl implements TraversalBranch
     TraversalBranchImpl( TraverserIterator traverser, TraversalBranch parent, Node source,
             RelationshipExpander expander )
     {
-        this.traverser = traverser;
+//        this.traverser = traverser;
         this.parent = parent;
         this.source = source;
         this.howIGotHere = null;
@@ -96,11 +96,11 @@ class TraversalBranchImpl implements TraversalBranch
         this.evaluation = traverser.description.evaluator.evaluate( this );
     }
 
-    private void expandRelationships()
+    private void expandRelationships( TraverserIterator traverser )
     {
         if ( evaluation.continues() )
         {
-            expandRelationshipsWithoutChecks();
+            expandRelationshipsWithoutChecks( traverser );
         }
         else
         {
@@ -108,7 +108,7 @@ class TraversalBranchImpl implements TraversalBranch
         }
     }
     
-    protected void expandRelationshipsWithoutChecks()
+    protected void expandRelationshipsWithoutChecks( TraverserIterator traverser )
     {
         relationships = traverser.description.expander.expand( this ).iterator();
     }
@@ -118,13 +118,13 @@ class TraversalBranchImpl implements TraversalBranch
         return relationships != null;
     }
 
-    public void initialize()
+    public void initialize( TraverserIterator traverser )
     {
         evaluation = traverser.description.evaluator.evaluate( this );
-        expandRelationships();
+        expandRelationships( traverser );
     }
 
-    public TraversalBranch next( MutableTraversalMetadata metadata )
+    public TraversalBranch next( TraverserIterator traverser, MutableTraversalMetadata metadata )
     {
         while ( relationships.hasNext() )
         {

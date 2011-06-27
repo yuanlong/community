@@ -94,7 +94,8 @@ public class Traversal
                     {
                         if ( metadata.getNumberOfPathsReturned() > 0 )
                         {
-                            return null;
+                            nextSelector();
+                            return getStateForCurrentSelector().other().poll();
                         }
                         
                         if ( branch != null )

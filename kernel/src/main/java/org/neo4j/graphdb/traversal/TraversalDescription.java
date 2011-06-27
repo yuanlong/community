@@ -162,7 +162,7 @@ public interface TraversalDescription
 //    TraversalDescription translate( BranchTranslator translator );
     
     TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering,
-            Node endNode );
+            PathCollisionDetector collisionDetector, Node endNode );
 
     /**
      * Traverse from a set of start nodes based on all the rules and behavior
