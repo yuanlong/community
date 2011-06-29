@@ -519,12 +519,6 @@ public class LuceneDataSource extends LogBackedXaDataSource
         closeWriter( identifier );
         deleteFileOrDirectory( getFileDirectory( baseStorePath, identifier ) );
         invalidateCache( identifier );
-//        boolean removeFromIndexStore = !recovery || (recovery &&
-//                indexStore.has( identifier.entityType.getType(), identifier.indexName ));
-//        if ( removeFromIndexStore )
-//        {
-//            indexStore.remove( identifier.entityType.getType(), identifier.indexName );
-//        }
         typeCache.invalidate( identifier );
         synchronized ( indexes )
         {

@@ -28,6 +28,7 @@ import org.apache.commons.configuration.Configuration;
 import org.neo4j.kernel.AbstractGraphDatabase;
 import org.neo4j.server.configuration.Configurator;
 import org.neo4j.server.database.Database;
+import org.neo4j.server.logging.Logger;
 import org.rrd4j.ConsolFun;
 import org.rrd4j.DsType;
 import org.rrd4j.core.RrdDb;
@@ -38,8 +39,9 @@ public class RrdFactory
     public static final int STEP_SIZE = 3000;
     public static final int STEPS_PER_ARCHIVE = 750;
     private static final String RRD_THREAD_NAME = "Statistics Gatherer";
-    
+
     private final Configuration config;
+    private Logger log = Logger.getLogger( RrdFactory.class );
 
     public RrdFactory( Configuration config )
     {
@@ -47,15 +49,11 @@ public class RrdFactory
         this.config = config;
     }
 
-    public RrdDb createRrdDbAndSampler( Database db,
-                                        JobScheduler scheduler ) throws MalformedObjectNameException, IOException
+    public RrdDb createRrdDbAndSampler( Database db, JobScheduler scheduler ) throws MalformedObjectNameException,
+            IOException
     {
-        Sampleable[] sampleables = new Sampleable[]{
-                new MemoryUsedSampleable(),
-                new NodeIdsInUseSampleable( db ),
-                new PropertyCountSampleable( db ),
-                new RelationshipCountSampleable( db )
-        };
+        Sampleable[] sampleables = new Sampleable[] { new MemoryUsedSampleable(), new NodeIdsInUseSampleable( db ),
+                new PropertyCountSampleable( db ), new RelationshipCountSampleable( db ) };
 
         String basePath = config.getString( Configurator.RRDB_LOCATION_PROPERTY_KEY, getDefaultDirectory( db.graph ) );
         RrdDb rrdb = createRrdb( basePath, STEP_SIZE, STEPS_PER_ARCHIVE, sampleables );
@@ -71,18 +69,42 @@ public class RrdFactory
         return new File( db.getStoreDir(), "rrd" ).getAbsolutePath();
     }
 
-    protected RrdDb createRrdb( String inDirectory, int stepSize, int stepsPerArchive,
-                                Sampleable... sampleables ) throws IOException
+    protected RrdDb createRrdb( String rrdPath, int stepSize, int stepsPerArchive, Sampleable... sampleables )
+            throws IOException
     {
-        if ( !new File( inDirectory ).exists() )
+        if ( !new File( rrdPath ).exists() )
         {
-            RrdDef rrdDef = createRrdDb( inDirectory, stepSize );
+            RrdDef rrdDef = createRrdDb( rrdPath, stepSize );
             defineDataSources( stepSize, rrdDef, sampleables );
             addArchives( stepsPerArchive, rrdDef );
             return new RrdDb( rrdDef );
-        } else
+        }
+        else
         {
-            return new RrdDb( inDirectory );
+            try
+            {
+                return new RrdDb( rrdPath );
+            }
+            catch ( IOException e )
+            {
+                if ( e.getMessage()
+                        .startsWith( "Invalid file header." ) )
+                {
+                    // RRD file has become corrupt
+                    File rrdFile = new File( rrdPath );
+                    if ( rrdFile.canWrite() )
+                    {
+                        rrdFile.delete();
+                        log.error( "Deleted corrupt RRDB statistics logging file." );
+                        return createRrdb( rrdPath, stepSize, stepsPerArchive, sampleables );
+                    }
+
+                    throw new IOException(
+                            "RRD file ['" + rrdFile.getAbsolutePath()
+                                    + "'] has become corrupted, but I do not have write permissions to recreate it.", e );
+                }
+                throw e;
+            }
         }
     }
 
@@ -119,7 +141,7 @@ public class RrdFactory
     private static RrdDef createRrdDb( String inDirectory, int stepSize )
     {
         RrdDef rrdDef = new RrdDef( inDirectory, stepSize );
-        //rrdDef.setVersion( 2 );
+        // rrdDef.setVersion( 2 );
         return rrdDef;
     }
 }

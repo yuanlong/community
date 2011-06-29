@@ -41,6 +41,8 @@ public class NeoServerFunctionalTest
 {
 
     private static NeoServerWithEmbeddedWebServer server;
+    
+    private static final Client LOCAL_TO_CURRENT_TEST_CLIENT = Client.create();
 
     @BeforeClass
     public static void setupServer() throws IOException
@@ -75,8 +77,7 @@ public class NeoServerFunctionalTest
         assertFalse( server.baseUri()
                 .toString()
                 .contains( "webadmin" ) );
-        ClientResponse response = Client.create()
-                .resource( server.baseUri() )
+        ClientResponse response = LOCAL_TO_CURRENT_TEST_CLIENT.resource( server.baseUri() )
                 .get( ClientResponse.class );
         assertThat( response.getStatus(), is( 200 ) );
         assertThat( response.toString(), containsString( "webadmin" ) );
@@ -88,8 +89,7 @@ public class NeoServerFunctionalTest
     {
         FunctionalTestHelper functionalTestHelper = new FunctionalTestHelper( server );
 
-        ClientResponse response = Client.create()
-                .resource( functionalTestHelper.getWebadminUri() )
+        ClientResponse response = LOCAL_TO_CURRENT_TEST_CLIENT.resource( functionalTestHelper.getWebadminUri() )
                 .get( ClientResponse.class );
 
         assertThat( response.getStatus(), is( 200 ) );
