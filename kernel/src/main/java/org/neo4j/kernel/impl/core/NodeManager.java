@@ -20,6 +20,8 @@
 package org.neo4j.kernel.impl.core;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -36,6 +38,7 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.helpers.Pair;
 import org.neo4j.helpers.Triplet;
+import org.neo4j.kernel.PropertyTracker;
 import org.neo4j.kernel.impl.cache.AdaptiveCacheManager;
 import org.neo4j.kernel.impl.cache.Cache;
 import org.neo4j.kernel.impl.cache.LruCache;
@@ -76,6 +79,9 @@ public class NodeManager
     private final PersistenceManager persistenceManager;
     private final EntityIdGenerator idGenerator;
 
+    private final List<PropertyTracker<Node>> nodePropertyTrackers;
+    private final List<PropertyTracker<Relationship>> relationshipPropertyTrackers;
+
     private boolean useAdaptiveCache = false;
     private float adaptiveCacheHeapRatio = 0.77f;
     private int minNodeCacheSize = 0;
@@ -114,6 +120,8 @@ public class NodeManager
         {
             loadLocks[i] = new ReentrantLock();
         }
+        nodePropertyTrackers = new LinkedList<PropertyTracker<Node>>();
+        relationshipPropertyTrackers = new LinkedList<PropertyTracker<Relationship>>();
     }
 
     public GraphDatabaseService getGraphDbService()
@@ -606,7 +614,7 @@ public class NodeManager
         ArrayMap<String,RelIdArray> newRelationshipMap =
             new ArrayMap<String,RelIdArray>();
         Map<Long,RelationshipImpl> relsMap = new HashMap<Long,RelationshipImpl>( 150 );
-        
+
         Iterable<RelationshipRecord> loops = rels.first().get( DirectionWrapper.BOTH );
         boolean hasLoops = loops != null;
         if ( hasLoops )
@@ -617,7 +625,7 @@ public class NodeManager
                 relsMap, DirectionWrapper.OUTGOING, hasLoops );
         receiveRelationships( rels.first().get( DirectionWrapper.INCOMING ), newRelationshipMap,
                 relsMap, DirectionWrapper.INCOMING, hasLoops );
-        
+
         // relCache.putAll( relsMap );
         return Triplet.of( newRelationshipMap, relsMap, rels.other() );
     }
@@ -845,17 +853,36 @@ public class NodeManager
 
     PropertyData nodeAddProperty( NodeImpl node, PropertyIndex index, Object value )
     {
+        for ( PropertyTracker<Node> nodePropertyTracker : nodePropertyTrackers )
+        {
+            nodePropertyTracker.propertyAdded( getNodeById( node.getId() ),
+                    index.getKey(), value );
+        }
         return persistenceManager.nodeAddProperty( node.getId(), index, value );
     }
 
-    PropertyData nodeChangeProperty( NodeImpl node, long propertyId, Object value )
+    PropertyData nodeChangeProperty( NodeImpl node, PropertyData property,
+            Object value )
     {
-        return persistenceManager.nodeChangeProperty( node.getId(), propertyId, value );
+        for ( PropertyTracker<Node> nodePropertyTracker : nodePropertyTrackers )
+        {
+            nodePropertyTracker.propertyChanged( getNodeById( node.getId() ),
+                    getIndexFor( property.getIndex() ).getKey(),
+                    property.getValue(), value );
+        }
+        return persistenceManager.nodeChangeProperty( node.getId(),
+                property.getId(), value );
     }
 
-    void nodeRemoveProperty( NodeImpl node, long propertyId )
+    void nodeRemoveProperty( NodeImpl node, PropertyData property )
     {
-        persistenceManager.nodeRemoveProperty( node.getId(), propertyId );
+        for ( PropertyTracker<Node> nodePropertyTracker : nodePropertyTrackers )
+        {
+            nodePropertyTracker.propertyRemoved( getNodeById( node.getId() ),
+                    getIndexFor( property.getIndex() ).getKey(),
+                    property.getValue() );
+        }
+        persistenceManager.nodeRemoveProperty( node.getId(), property.getId() );
     }
 
     ArrayMap<Integer,PropertyData> deleteRelationship( RelationshipImpl rel )
@@ -868,17 +895,40 @@ public class NodeManager
     PropertyData relAddProperty( RelationshipImpl rel, PropertyIndex index,
         Object value )
     {
+        for ( PropertyTracker<Relationship> relPropertyTracker : relationshipPropertyTrackers )
+        {
+            relPropertyTracker.propertyAdded(
+                    getRelationshipById( rel.getId() ),
+                    index.getKey(), value );
+        }
         return persistenceManager.relAddProperty( rel.getId(), index, value );
     }
 
-    PropertyData relChangeProperty( RelationshipImpl rel, long propertyId, Object value )
+    PropertyData relChangeProperty( RelationshipImpl rel,
+            PropertyData property, Object value )
     {
-        return persistenceManager.relChangeProperty( rel.getId(), propertyId, value );
+        for ( PropertyTracker<Relationship> relPropertyTracker : relationshipPropertyTrackers )
+        {
+            relPropertyTracker.propertyChanged(
+                    getRelationshipById( rel.getId() ),
+                    getIndexFor( property.getIndex() ).getKey(),
+                    property.getValue(), value
+                    );
+        }
+        return persistenceManager.relChangeProperty( rel.getId(),
+                property.getId(), value );
     }
 
-    void relRemoveProperty( RelationshipImpl rel, long propertyId )
+    void relRemoveProperty( RelationshipImpl rel, PropertyData property )
     {
-        persistenceManager.relRemoveProperty( rel.getId(), propertyId );
+        for ( PropertyTracker<Relationship> relPropertyTracker : relationshipPropertyTrackers )
+        {
+            relPropertyTracker.propertyRemoved(
+                    getRelationshipById( rel.getId() ),
+                    getIndexFor( property.getIndex() ).getKey(),
+                    property.getValue() );
+        }
+        persistenceManager.relRemoveProperty( rel.getId(), property.getId() );
     }
 
     public RelIdArray getCowRelationshipRemoveMap( NodeImpl node, String type )
@@ -1087,5 +1137,29 @@ public class NodeManager
         {
             return this.description;
         }
+    }
+
+    public void addNodePropertyTracker(
+            PropertyTracker<Node> nodePropertyTracker )
+    {
+        nodePropertyTrackers.add( nodePropertyTracker );
+    }
+
+    public void removeNodePropertyTracker(
+            PropertyTracker<Node> nodePropertyTracker )
+    {
+        nodePropertyTrackers.remove( nodePropertyTracker );
+    }
+
+    public void addRelationshipPropertyTracker(
+            PropertyTracker<Relationship> relationshipPropertyTracker )
+    {
+        relationshipPropertyTrackers.add( relationshipPropertyTracker );
+    }
+
+    public void removeRelationshipPropertyTracker(
+            PropertyTracker<Relationship> relationshipPropertyTracker )
+    {
+        relationshipPropertyTrackers.remove( relationshipPropertyTracker );
     }
 }
