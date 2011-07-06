@@ -17,14 +17,26 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher
+package org.neo4j.test.subprocess;
 
-/**
- * Created by Andres Taylor
- * Date: 5/20/11
- * Time: 14:08 
- */
+@SuppressWarnings( "serial" )
+public final class KillSubProcess extends Exception
+{
+    public static KillSubProcess withExitCode( int exitCode )
+    {
+        return new KillSubProcess( exitCode );
+    }
 
-class SyntaxError(message:String, cause:Throwable) extends Exception(message, cause) {
-  def this(message:String) = this(message, null)
+    final int exitCode;
+
+    private KillSubProcess( int exitCode )
+    {
+        this.exitCode = exitCode;
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace()
+    {
+        return this;
+    }
 }

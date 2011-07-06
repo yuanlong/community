@@ -94,8 +94,15 @@ public abstract class GraphDatabaseApp extends AbstractApp
         NodeOrRelationship result = null;
         if ( currentThing == null )
         {
-            result = NodeOrRelationship.wrap(
-                server.getDb().getReferenceNode() );
+            try
+            {
+                result = NodeOrRelationship.wrap(
+                    server.getDb().getReferenceNode() );
+            }
+            catch ( NotFoundException e )
+            {
+                throw new ShellException( "Reference node not found" );
+            }
             setCurrent( session, result );
         }
         else
@@ -105,7 +112,7 @@ public abstract class GraphDatabaseApp extends AbstractApp
         }
         return result;
     }
-
+    
     protected NodeOrRelationship getCurrent( Session session )
         throws ShellException
     {
@@ -117,6 +124,11 @@ public abstract class GraphDatabaseApp extends AbstractApp
         String currentThing = ( String ) safeGet( session, CURRENT_KEY );
         return currentThing != null && currentThing.equals(
                 thing.getTypedId().toString() );
+    }
+    
+    protected static void clearCurrent( Session session )
+    {
+        safeSet( session, CURRENT_KEY, new TypedId( NodeOrRelationship.TYPE_NODE, 0 ).toString() );
     }
 
     protected static void setCurrent( Session session,
@@ -255,6 +267,11 @@ public abstract class GraphDatabaseApp extends AbstractApp
     {
         NodeOrRelationship current = getCurrent( server, session );
         return current.isNode() ? "(me)" : "<me>";
+    }
+    
+    public static String getDisplayNameForNonExistent()
+    {
+        return "(?)";
     }
 
     /**
@@ -424,6 +441,18 @@ public abstract class GraphDatabaseApp extends AbstractApp
             patternOrNull.matcher( value ).matches();
     }
 
+    protected static <T extends Enum<T>> String niceEnumAlternatives( Class<T> enumClass )
+    {
+        StringBuilder builder = new StringBuilder( "[" );
+        int count = 0;
+        for ( T enumConstant : enumClass.getEnumConstants() )
+        {
+            builder.append( (count++ == 0 ? "" : ", ") );
+            builder.append( enumConstant.name() );
+        }
+        return builder.append( "]" ).toString();
+    }
+    
     protected static <T extends Enum<T>> T parseEnum(
         Class<T> enumClass, String name, T defaultValue, Pair<String, T>... additionalPairs )
     {

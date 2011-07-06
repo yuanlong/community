@@ -17,22 +17,29 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.server.rest;
+package org.neo4j.kernel.impl.index;
 
-import com.sun.jersey.api.client.ClientResponse;
+import static org.junit.Assert.assertEquals;
 
-public class HttpResponse implements TestResponse
+import java.io.File;
+
+import org.junit.Test;
+
+public class TestIndexProviderStore
 {
-    private final ClientResponse inner;
-
-    public HttpResponse( ClientResponse inner )
+    @Test
+    public void lastCommitedTxGetsStoredBetweenSessions() throws Exception
     {
-        this.inner = inner;
-    }
-
-    @Override
-    public int getStatus()
-    {
-        return inner.getStatus();
+        File file = new File( "target/test-data/index-provider-store" );
+        file.mkdirs();
+        file.delete();
+        IndexProviderStore store = new IndexProviderStore( file );
+        store.setVersion( 5 );
+        store.setLastCommittedTx( 12 );
+        store.close();
+        store = new IndexProviderStore( file );
+        assertEquals( 5, store.getVersion() );
+        assertEquals( 12, store.getLastCommittedTx() );
+        store.close();
     }
 }
