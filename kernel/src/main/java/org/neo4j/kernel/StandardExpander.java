@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2002-2011 "Neo Technology,"
+  * Copyright (c) 2002-2011 "Neo Technology,"
  * Network Engine for Objects in Lund AB [http://neotechnology.com]
  *
  * This file is part of Neo4j.
@@ -98,7 +98,7 @@ public abstract class StandardExpander implements Expander
         public StandardExpansion<T> filterRelationships(
                 Predicate<? super Relationship> filter )
         {
-            return createNew( expander.addRelationsipFilter( filter ) );
+            return createNew( expander.addRelationshipFilter( filter ) );
         }
 
         public T getSingle()
@@ -129,7 +129,7 @@ public abstract class StandardExpander implements Expander
 
         public StandardExpansion<Relationship> relationships()
         {
-            return new RelationsipExpansion( expander, path );
+            return new RelationshipExpansion( expander, path );
         }
 
         public StandardExpansion<Pair<Relationship, Node>> pairs()
@@ -138,10 +138,10 @@ public abstract class StandardExpander implements Expander
         }
     }
 
-    private static final class RelationsipExpansion extends
+    private static final class RelationshipExpansion extends
             StandardExpansion<Relationship>
     {
-        RelationsipExpansion( StandardExpander expander, Path path )
+        RelationshipExpansion( StandardExpander expander, Path path )
         {
             super( expander, path );
         }
@@ -155,7 +155,7 @@ public abstract class StandardExpander implements Expander
         @Override
         StandardExpansion<Relationship> createNew( StandardExpander expander )
         {
-            return new RelationsipExpansion( expander, path );
+            return new RelationshipExpansion( expander, path );
         }
 
         @Override
@@ -628,7 +628,7 @@ public abstract class StandardExpander implements Expander
         }
 
         @Override
-        public StandardExpander addRelationsipFilter(
+        public StandardExpander addRelationshipFilter(
                 Predicate<? super Relationship> filter )
         {
             return new FilteringExpander( expander, append( filters,
@@ -747,7 +747,7 @@ public abstract class StandardExpander implements Expander
 
     public final Expansion<Relationship> expand( Path path )
     {
-        return new RelationsipExpansion( this, path );
+        return new RelationshipExpansion( this, path );
     }
 
     static <T> T[] append( T[] array, T item )
@@ -803,10 +803,16 @@ public abstract class StandardExpander implements Expander
         return new FilteringExpander( this, new NodeFilter( filter ) );
     }
 
-    public StandardExpander addRelationsipFilter(
+    public StandardExpander addRelationshipFilter(
             Predicate<? super Relationship> filter )
     {
         return new FilteringExpander( this, new RelationshipFilter( filter ) );
+    }
+    
+    public StandardExpander addRelationsipFilter(
+            Predicate<? super Relationship> filter )
+    {
+        return addRelationshipFilter(filter);
     }
 
     static StandardExpander wrap( RelationshipExpander expander )

@@ -67,6 +67,7 @@ import org.neo4j.server.rest.repr.RelationshipRepresentationTest;
 import org.neo4j.server.rest.repr.formats.JsonFormat;
 import org.neo4j.server.rest.web.DatabaseActions.RelationshipDirection;
 import org.neo4j.server.rest.web.RestfulGraphDatabase.AmpersandSeparatedCollection;
+import org.neo4j.test.server.EntityOutputFormat;
 
 public class RestfulGraphDatabaseTest
 {
@@ -916,6 +917,7 @@ public class RestfulGraphDatabaseTest
         assertNotNull( map.get( "node_index" ) );
         assertNotNull( map.get( "extensions_info" ) );
         assertNotNull( map.get( "relationship_index" ) );
+        assertNotNull( map.get( "batch" ) );
         assertEquals( response.getMetadata()
                 .getFirst( HttpHeaders.CONTENT_ENCODING ), "UTF-8" );
     }
