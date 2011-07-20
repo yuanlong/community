@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
@@ -34,11 +35,11 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.PathCollisionDetector;
 import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
+import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFilter;
 import org.neo4j.helpers.collection.CombiningIterator;
@@ -58,8 +59,9 @@ class TraverserImpl implements Traverser
 
     public Iterator<Path> iterator()
     {
-        return description.selectorOrdering != null ?
+        TraverserIterator iterator = description.selectorOrdering != null ?
                 new BidirectionalTraverserIterator() : new TraverserIterator();
+        return description.sorting != null ? new SortingTraverserIterator( iterator ) : iterator;
     }
 
     public Iterable<Node> nodes()
@@ -362,6 +364,87 @@ class TraverserImpl implements Traverser
         public void prune()
         {
             branches = Collections.<TraversalBranch>emptyList().iterator();
+        }
+    }
+    
+    class SortingTraverserIterator extends PrefetchingIterator<Path>
+            implements TraversalBranchCreator, TraversalContext
+    {
+        private final TraverserIterator source;
+        private Iterator<Path> sortedResultIterator;
+
+        SortingTraverserIterator( TraverserIterator source )
+        {
+            this.source = source;
+        }
+
+        @Override
+        public int getNumberOfPathsReturned()
+        {
+            return source.getNumberOfPathsReturned();
+        }
+
+        @Override
+        public int getNumberOfRelationshipsTraversed()
+        {
+            return source.getNumberOfRelationshipsTraversed();
+        }
+
+        @Override
+        public void relationshipTraversed()
+        {
+            source.relationshipTraversed();
+        }
+
+        @Override
+        public void unnecessaryRelationshipTraversed()
+        {
+            source.unnecessaryRelationshipTraversed();
+        }
+
+        @Override
+        public boolean okToProceedFirst( TraversalBranch branch )
+        {
+            return source.okToProceedFirst( branch );
+        }
+
+        @Override
+        public boolean okToProceed( TraversalBranch branch )
+        {
+            return source.okToProceed( branch );
+        }
+
+        @Override
+        public Evaluation evaluate( TraversalBranch branch )
+        {
+            return source.evaluate( branch );
+        }
+
+        @Override
+        public TraversalBranch create( Node node, Node... additionalNodes )
+        {
+            return source.create( node, additionalNodes );
+        }
+
+        @Override
+        protected Path fetchNextOrNull()
+        {
+            if ( sortedResultIterator == null )
+            {
+                sortedResultIterator = fetchAndSortResult();
+            }
+            return sortedResultIterator.hasNext() ? sortedResultIterator.next() : null;
+        }
+
+        private Iterator<Path> fetchAndSortResult()
+        {
+            List<Path> result = new ArrayList<Path>();
+            while ( source.hasNext() )
+            {
+                result.add( source.next() );
+            }
+            Collections.sort( result, TraverserImpl.this.description.sorting );
+            return result.iterator();
         }
     }
 }

@@ -19,8 +19,11 @@
  */
 package org.neo4j.graphdb.traversal;
 
+import java.util.Comparator;
+
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.kernel.Uniqueness;
@@ -161,6 +164,8 @@ public interface TraversalDescription
     
     TraversalDescription bidirectional( SelectorOrderingPolicy selectorOrdering,
             PathCollisionDetector collisionDetector, Node endNode );
+    
+    TraversalDescription sort( Comparator<? super Path> comparator );
 
     /**
      * Traverse from a set of start nodes based on all the rules and behavior
