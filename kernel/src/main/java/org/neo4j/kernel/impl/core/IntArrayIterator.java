@@ -19,6 +19,7 @@
  */
 package org.neo4j.kernel.impl.core;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -30,7 +31,7 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.impl.util.RelIdArray;
 import org.neo4j.kernel.impl.util.RelIdArray.DirectionWrapper;
-import org.neo4j.kernel.impl.util.RelIdArray.RelIdIterator;
+import org.neo4j.kernel.impl.util.RelIdIterator;
 
 class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iterable<Relationship>
 {
@@ -127,7 +128,7 @@ class IntArrayIterator extends PrefetchingIterator<Relationship> implements Iter
                             RelIdIterator itr = newRels.get( type );
                             if ( itr == null )
                             {
-                                RelIdArray remove = nodeManager.getCowRelationshipRemoveMap( fromNode, type );
+                                Collection<Long> remove = nodeManager.getCowRelationshipRemoveMap( fromNode, type );
                                 itr = remove == null ? ids.iterator( direction ) :
                                         RelIdArray.from( ids, null, remove ).iterator( direction );
                                 newRels.put( type, itr );
