@@ -17,25 +17,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.kernel.impl.index;
+package org.neo4j.index.impl.lucene;
 
-import java.util.Map;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.index.Index;
 
-import org.neo4j.graphdb.PropertyContainer;
-import org.neo4j.graphdb.index.ReadableIndex;
-import org.neo4j.kernel.impl.transaction.xaframework.XaConnectionHelpImpl;
-import org.neo4j.kernel.impl.transaction.xaframework.XaResourceManager;
-
-public abstract class IndexXaConnection extends XaConnectionHelpImpl
+public class TestIndexDeletionViaIndexManager extends TestIndexDeletion
 {
-    public IndexXaConnection( XaResourceManager xaRm )
+    @Override
+    protected void deleteIndex( Index<Node> index )
     {
-        super( xaRm );
+        graphDb.index().delete( index );
     }
-
-    public abstract <T extends PropertyContainer> void createIndex(
-            Class<T> entityType, String indexName, Map<String, String> config );
-
-    public abstract <T extends PropertyContainer> void deleteIndex(
-            ReadableIndex<T> index );
 }

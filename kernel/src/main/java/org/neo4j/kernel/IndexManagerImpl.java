@@ -33,6 +33,7 @@ import org.neo4j.graphdb.index.AutoIndexer;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexImplementation;
 import org.neo4j.graphdb.index.IndexManager;
+import org.neo4j.graphdb.index.ReadableIndex;
 import org.neo4j.graphdb.index.RelationshipAutoIndexer;
 import org.neo4j.graphdb.index.RelationshipIndex;
 import org.neo4j.helpers.Pair;
@@ -317,7 +318,8 @@ class IndexManagerImpl implements IndexManager
         return indexStore.getNames( Relationship.class );
     }
 
-    public Map<String, String> getConfiguration( Index<? extends PropertyContainer> index )
+    public Map<String, String> getConfiguration(
+            ReadableIndex<? extends PropertyContainer> index )
     {
         Map<String, String> config = indexStore.get( index.getEntityType(), index.getName() );
         if ( config == null )
@@ -328,7 +330,9 @@ class IndexManagerImpl implements IndexManager
         return config;
     }
 
-    public String setConfiguration( Index<? extends PropertyContainer> index, String key, String value )
+    public String setConfiguration(
+            ReadableIndex<? extends PropertyContainer> index, String key,
+            String value )
     {
         assertLegalConfigKey( key );
         Map<String, String> config = getMutableConfig( index );
@@ -345,12 +349,14 @@ class IndexManagerImpl implements IndexManager
         }
     }
 
-    private Map<String, String> getMutableConfig( Index<? extends PropertyContainer> index )
+    private Map<String, String> getMutableConfig(
+            ReadableIndex<? extends PropertyContainer> index )
     {
         return new HashMap<String, String>( getConfiguration( index ) );
     }
 
-    public String removeConfiguration( Index<? extends PropertyContainer> index, String key )
+    public String removeConfiguration(
+            ReadableIndex<? extends PropertyContainer> index, String key )
     {
         assertLegalConfigKey( key );
         Map<String, String> config = getMutableConfig( index );
@@ -370,5 +376,11 @@ class IndexManagerImpl implements IndexManager
     public RelationshipAutoIndexer getRelationshipAutoIndexer()
     {
         return relAutoIndexer;
+    }
+
+    @Override
+    public void delete( ReadableIndex<? extends PropertyContainer> index )
+    {
+        index.delete();
     }
 }

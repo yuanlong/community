@@ -232,6 +232,12 @@ abstract class AbstractAutoIndexerImpl<T extends PropertyContainer> implements
         }
 
         @Override
+        public void delete()
+        {
+            delegate.delete();
+        }
+
+        @Override
         public boolean isWriteable()
         {
             return false;
@@ -313,7 +319,7 @@ abstract class AbstractAutoIndexerImpl<T extends PropertyContainer> implements
         @Override
         public void delete()
         {
-            throw new UnsupportedOperationException( "read only index" );
+            delegate.delete();
         }
 
         @Override

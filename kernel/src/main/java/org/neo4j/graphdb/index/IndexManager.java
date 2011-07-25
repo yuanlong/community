@@ -153,7 +153,8 @@ public interface IndexManager
      *
      * @return configuration for the {@code index}.
      */
-    Map<String, String> getConfiguration( Index<? extends PropertyContainer> index );
+    Map<String, String> getConfiguration(
+            ReadableIndex<? extends PropertyContainer> index );
 
     /**
      * EXPERT: Sets a configuration parameter for an index. If a configuration
@@ -170,7 +171,8 @@ public interface IndexManager
      * @param value the new value of the configuration parameter.
      * @return the overwritten value if any.
      */
-    String setConfiguration( Index<? extends PropertyContainer> index, String key, String value );
+    String setConfiguration( ReadableIndex<? extends PropertyContainer> index,
+            String key, String value );
 
     /**
      * EXPERT: Removes a configuration parameter from an index. If there's no
@@ -187,9 +189,12 @@ public interface IndexManager
      * @param key the configuration parameter key.
      * @return the removed value if any.
      */
-    String removeConfiguration( Index<? extends PropertyContainer> index, String key );
+    String removeConfiguration(
+            ReadableIndex<? extends PropertyContainer> index, String key );
 
     AutoIndexer<Node> getNodeAutoIndexer();
 
     RelationshipAutoIndexer getRelationshipAutoIndexer();
+
+    void delete( ReadableIndex<? extends PropertyContainer> index );
 }

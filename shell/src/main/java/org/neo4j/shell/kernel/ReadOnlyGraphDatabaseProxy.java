@@ -545,7 +545,7 @@ public class ReadOnlyGraphDatabaseProxy implements GraphDatabaseService, IndexMa
 
         public void delete()
         {
-            readOnly();
+            actual.delete();
         }
 
         public void add( T entity, String key, Object value )

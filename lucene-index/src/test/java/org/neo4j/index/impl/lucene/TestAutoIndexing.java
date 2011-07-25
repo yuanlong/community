@@ -483,6 +483,34 @@ public class TestAutoIndexing
     }
 
     @Test
+    public void testAutoIndexDeletion()
+    {
+        AutoIndexer<Node> autoIndexer = graphDb.index().getNodeAutoIndexer();
+        autoIndexer.setEnabled( true );
+        autoIndexer.startAutoIndexingProperty( "propName" );
+
+        newTransaction();
+        Node node1 = graphDb.createNode();
+        node1.setProperty( "propName", "node" );
+        newTransaction();
+        assertEquals(
+                node1,
+                autoIndexer.getAutoIndex().get( "propName", "node" ).getSingle() );
+        graphDb.index().delete( autoIndexer.getAutoIndex() );
+        try
+        {
+            autoIndexer.getAutoIndex().get( "propName", "node" ).hasNext();
+            fail( "Auto index should have been deleted and IllegalStateExceptionThrown" );
+        }
+        catch ( IllegalStateException e )
+        {
+            // good
+        }
+        newTransaction();
+        assertFalse( autoIndexer.getAutoIndex().get( "propName", "node" ).hasNext() );
+    }
+
+    @Test
     public void testStopMonitoringProperty()
     {
         AutoIndexer<Node> autoIndexer = graphDb.index().getNodeAutoIndexer();

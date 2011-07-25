@@ -49,7 +49,7 @@ import org.neo4j.kernel.EmbeddedGraphDatabase;
 public class TestIndexDeletion
 {
     private static final String INDEX_NAME = "index";
-    private static GraphDatabaseService graphDb;
+    protected static GraphDatabaseService graphDb;
     private Index<Node> index;
     private Transaction tx;
     private String key;
@@ -105,7 +105,7 @@ public class TestIndexDeletion
     {
         beginTx();
         index = graphDb.index().forNodes( INDEX_NAME );
-        index.delete();
+        deleteIndex( index );
         restartTx();
 
         index = graphDb.index().forNodes( INDEX_NAME );
@@ -115,6 +115,11 @@ public class TestIndexDeletion
         node = graphDb.createNode();
         index.add( node, key, value );
         workers = new ArrayList<WorkThread>();
+    }
+
+    protected void deleteIndex( Index<Node> index )
+    {
+        index.delete();
     }
 
     public void beginTx()
@@ -136,7 +141,7 @@ public class TestIndexDeletion
     {
         restartTx();
         assertContains( index.query( key, "own" ) );
-        index.delete();
+        deleteIndex( index );
         restartTx();
 
         Index<Node> recreatedIndex = graphDb.index().forNodes( INDEX_NAME, LuceneIndexImplementation.FULLTEXT_CONFIG );
@@ -151,7 +156,7 @@ public class TestIndexDeletion
     public void shouldNotBeDeletedWhenDeletionRolledBack()
     {
         restartTx();
-        index.delete();
+        deleteIndex( index );
         rollbackTx();
         index.get( key, value );
     }
@@ -160,7 +165,7 @@ public class TestIndexDeletion
     public void shouldThrowIllegalStateForActionsAfterDeletedOnIndex()
     {
         restartTx();
-        index.delete();
+        deleteIndex( index );
         restartTx();
         index.query( key, "own" );
     }
@@ -169,7 +174,7 @@ public class TestIndexDeletion
     public void shouldThrowIllegalStateForActionsAfterDeletedOnIndex2()
     {
         restartTx();
-        index.delete();
+        deleteIndex( index );
         restartTx();
         index.add( node, key, value );
     }
@@ -178,7 +183,7 @@ public class TestIndexDeletion
     public void shouldThrowIllegalStateForActionsAfterDeletedOnIndex3()
     {
         restartTx();
-        index.delete();
+        deleteIndex( index );
         index.query( key, "own" );
     }
 
@@ -186,7 +191,7 @@ public class TestIndexDeletion
     public void shouldThrowIllegalStateForActionsAfterDeletedOnIndex4()
     {
         restartTx();
-        index.delete();
+        deleteIndex( index );
         Index<Node> newIndex = graphDb.index().forNodes( INDEX_NAME );
         newIndex.query( key, "own" );
     }
@@ -284,7 +289,7 @@ public class TestIndexDeletion
 
         assertTrue( pathToLuceneIndex.exists() );
         assertTrue( pathToOtherLuceneIndex.exists() );
-        index.delete();
+        deleteIndex( index );
         assertTrue( pathToLuceneIndex.exists() );
         assertTrue( pathToOtherLuceneIndex.exists() );
         restartTx();
@@ -294,7 +299,7 @@ public class TestIndexDeletion
         assertFalse( pathToLuceneIndex.exists() );
         assertTrue( pathToOtherLuceneIndex.exists() );
     }
-    
+
     @Test
     public void canDeleteIndexEvenIfEntitiesAreFoundToBeAbandonedInTheSameTx()
     {
@@ -312,7 +317,7 @@ public class TestIndexDeletion
         // iterate over all nodes indexed with the key to discover abandoned
         for ( @SuppressWarnings( "unused" ) Node hit : nodeIndex.get( "key", "value" ) );
 
-        nodeIndex.delete();
+        deleteIndex( nodeIndex );
         restartTx();
     }
 

@@ -25,6 +25,7 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 
 import org.neo4j.graphdb.PropertyContainer;
+import org.neo4j.graphdb.index.ReadableIndex;
 import org.neo4j.kernel.impl.index.IndexXaConnection;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResourceHelpImpl;
 import org.neo4j.kernel.impl.transaction.xaframework.XaResourceManager;
@@ -37,36 +38,36 @@ class LuceneXaConnection extends IndexXaConnection
 {
     private final LuceneXaResource xaResource;
 
-    LuceneXaConnection( Object identifier, XaResourceManager xaRm, 
+    LuceneXaConnection( Object identifier, XaResourceManager xaRm,
         byte[] branchId )
     {
         super( xaRm );
         xaResource = new LuceneXaResource( identifier, xaRm, branchId );
     }
-    
+
     @Override
     public XAResource getXaResource()
     {
         return xaResource;
     }
-    
+
     private static class LuceneXaResource extends XaResourceHelpImpl
     {
         private final Object identifier;
-        
-        LuceneXaResource( Object identifier, XaResourceManager xaRm, 
+
+        LuceneXaResource( Object identifier, XaResourceManager xaRm,
             byte[] branchId )
         {
             super( xaRm, branchId );
             this.identifier = identifier;
         }
-        
+
         @Override
         public boolean isSameRM( XAResource xares )
         {
             if ( xares instanceof LuceneXaResource )
             {
-                return identifier.equals( 
+                return identifier.equals(
                     ((LuceneXaResource) xares).identifier );
             }
             return false;
@@ -74,7 +75,7 @@ class LuceneXaConnection extends IndexXaConnection
     }
 
     private LuceneTransaction luceneTx;
-    
+
     LuceneTransaction getLuceneTx()
     {
         if ( luceneTx == null )
@@ -90,37 +91,40 @@ class LuceneXaConnection extends IndexXaConnection
         }
         return luceneTx;
     }
-    
+
     <T extends PropertyContainer> void add( LuceneIndex<T> index,
             T entity, String key, Object value )
     {
         getLuceneTx().add( index, entity, key, value );
     }
-    
+
     <T extends PropertyContainer> void remove( LuceneIndex<T> index,
             T entity, String key, Object value )
     {
         getLuceneTx().remove( index, entity, key, value );
     }
-    
+
     <T extends PropertyContainer> void remove( LuceneIndex<T> index,
             T entity, String key )
     {
         getLuceneTx().remove( index, entity, key );
     }
-    
+
     <T extends PropertyContainer> void remove( LuceneIndex<T> index,
             T entity )
     {
         getLuceneTx().remove( index, entity );
     }
-    
-    <T extends PropertyContainer> void deleteIndex( LuceneIndex<T> index )
+
+    @Override
+    public <T extends PropertyContainer> void deleteIndex(
+            ReadableIndex<T> index )
     {
-        getLuceneTx().delete( index );
+        getLuceneTx().delete( (LuceneIndex<T>) index );
     }
-    
-    public void createIndex( Class<? extends PropertyContainer> entityType,
+
+    @Override
+    public <T extends PropertyContainer> void createIndex( Class<T> entityType,
             String name, Map<String, String> config )
     {
         getLuceneTx().createIndex( entityType, name, config );

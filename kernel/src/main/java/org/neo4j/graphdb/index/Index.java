@@ -93,12 +93,4 @@ public interface Index<T extends PropertyContainer> extends ReadableIndex<T>
      * remove the this index.
      */
     void remove( T entity );
-    
-    /**
-     * Clears the index and deletes the configuration associated with it. After
-     * this it's invalid to call any other method on this index. However if the
-     * transaction which the delete operation was called in gets rolled back
-     * it again becomes ok to use this index.
-     */
-    void delete();
 }

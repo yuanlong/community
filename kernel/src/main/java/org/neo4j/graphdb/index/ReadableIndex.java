@@ -81,8 +81,19 @@ public interface ReadableIndex<T extends PropertyContainer>
      * A ReadableIndex is possible to support mutating operations as well. This
      * method returns true iff such operations are supported by the
      * implementation.
-     * 
+     *
      * @return true iff mutating operations are supported.
      */
     boolean isWriteable();
+
+    /**
+     * Clears the index and deletes the configuration associated with it. After
+     * this it's invalid to call any other method on this index. However if the
+     * transaction which the delete operation was called in gets rolled back
+     * it again becomes ok to use this index.
+     *
+     * @deprecated Use {@link IndexManager#delete(ReadableIndex)} instead
+     */
+    @Deprecated
+    void delete();
 }
