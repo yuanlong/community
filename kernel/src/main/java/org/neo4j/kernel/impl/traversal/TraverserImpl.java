@@ -20,7 +20,6 @@
 package org.neo4j.kernel.impl.traversal;
 
 import static java.util.Arrays.asList;
-import static org.neo4j.kernel.Traversal.simplePathToString;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -158,14 +157,14 @@ class TraverserImpl implements Traverser
                     new AsOneStartBranch( this, startNodes ), this, description.expander );
         }
 
-        public boolean okToProceedFirst( TraversalBranch source )
+        public boolean isUniqueFirst( TraversalBranch branch )
         {
-            return this.uniqueness.checkFirst( source );
+            return this.uniqueness.checkFirst( branch );
         }
 
-        public boolean okToProceed( TraversalBranch source )
+        public boolean isUnique( TraversalBranch branch )
         {
-            return this.uniqueness.check( source );
+            return this.uniqueness.check( branch );
         }
         
         @Override
@@ -245,10 +244,8 @@ class TraverserImpl implements Traverser
                 result = selector.next( this );
                 if ( result == null )
                 {
-                    System.out.println( "selected " + result );
                     return null;
                 }
-                System.out.println( "selected " + simplePathToString( result, "name" ) );
                 Iterable<Path> pathCollisions = collisionDetector.evaluate( result, selector.currentSelector() );
                 if ( pathCollisions != null )
                 {
@@ -403,15 +400,15 @@ class TraverserImpl implements Traverser
         }
 
         @Override
-        public boolean okToProceedFirst( TraversalBranch branch )
+        public boolean isUniqueFirst( TraversalBranch branch )
         {
-            return source.okToProceedFirst( branch );
+            return source.isUniqueFirst( branch );
         }
 
         @Override
-        public boolean okToProceed( TraversalBranch branch )
+        public boolean isUnique( TraversalBranch branch )
         {
-            return source.okToProceed( branch );
+            return source.isUnique( branch );
         }
 
         @Override

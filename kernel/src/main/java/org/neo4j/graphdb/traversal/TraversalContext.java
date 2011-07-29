@@ -25,9 +25,9 @@ public interface TraversalContext extends TraversalMetadata
     
     void unnecessaryRelationshipTraversed();
     
-    boolean okToProceedFirst( TraversalBranch branch );
+    boolean isUniqueFirst( TraversalBranch branch );
     
-    boolean okToProceed( TraversalBranch branch );
+    boolean isUnique( TraversalBranch branch );
     
     Evaluation evaluate( TraversalBranch branch );
 }

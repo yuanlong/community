@@ -30,7 +30,7 @@ class StartNodeTraversalBranch extends TraversalBranchImpl
             RelationshipExpander expander )
     {
         super( context, parent, source, expander );
-        context.okToProceedFirst( this );
+        context.isUniqueFirst( this );
     }
 
     @Override

@@ -114,10 +114,25 @@ class TraversalBranchImpl implements TraversalBranch
         return relationships != null;
     }
 
-    public void initialize( RelationshipExpander expander, TraversalContext metadata )
+    public void initialize( final RelationshipExpander expander, TraversalContext metadata )
     {
         evaluation = metadata.evaluate( this );
-        expandRelationships( expander );
+        
+        // Instantiate an Iterator<Relationship> which will initialize the real
+        // iterator on the first call to hasNext() and rebind the relationships
+        // variable to it.
+        relationships = new Iterator<Relationship>()
+        {
+            @Override
+            public boolean hasNext()
+            {
+                expandRelationships( expander );
+                return relationships.hasNext();
+            }
+
+            @Override public Relationship next() { throw new UnsupportedOperationException(); }
+            @Override public void remove() { throw new UnsupportedOperationException(); }
+        };
     }
 
     public TraversalBranch next( RelationshipExpander expander, TraversalContext metadata )
@@ -132,9 +147,8 @@ class TraversalBranchImpl implements TraversalBranch
             }
             expandedCount++;
             Node node = relationship.getOtherNode( source );
-            TraversalBranch next = new TraversalBranchImpl( this, depth + 1, node,
-                    relationship );
-            if ( metadata.okToProceed( next ) )
+            TraversalBranch next = new TraversalBranchImpl( this, depth + 1, node, relationship );
+            if ( metadata.isUnique( next ) )
             {
                 metadata.relationshipTraversed();
                 next.initialize( expander, metadata );
