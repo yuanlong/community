@@ -30,7 +30,7 @@ class CypherParserTest extends JUnitSuite {
   def testQuery(query: String, expectedQuery: Query) {
     val parser = new CypherParser()
 
-    try{
+    try {
       val executionTree = parser.parse(query)
 
       assertEquals(expectedQuery, executionTree)
@@ -43,509 +43,511 @@ class CypherParserTest extends JUnitSuite {
   }
 
   @Test def shouldParseEasiestPossibleQuery() {
-    testQuery(
-      "start s = (1) return s",
-      Query(
-        Return(EntityOutput("s")),
-        Start(NodeById("s", 1))))
+    val q = Query.
+      start(NodeById("s", 1)).
+      RETURN(ValueReturnItem(EntityValue("s")))
+    testQuery("start s = (1) return s", q)
   }
 
   @Test def sourceIsAnIndex() {
     testQuery(
       """start a = (index, key, "value") return a""",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeByIndex("a", "index", "key", "value"))))
+      Query.
+        start(NodeByIndex("a", "index", "key", "value")).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def sourceIsAnIndexQuery() {
     testQuery(
       """start a = (index, "key:value") return a""",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeByIndexQuery("a", "index", "key:value"))))
+      Query.
+        start(NodeByIndexQuery("a", "index", "key:value")).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldParseEasiestPossibleRelationshipQuery() {
     testQuery(
       "start s = <1> return s",
-      Query(
-        Return(EntityOutput("s")),
-        Start(RelationshipById("s", 1))))
+      Query.
+        start(RelationshipById("s", 1)).
+        RETURN(ValueReturnItem(EntityValue("s"))))
   }
 
   @Test def sourceIsARelationshipIndex() {
     testQuery(
       """start a = <index, key, "value"> return a""",
-      Query(
-        Return(EntityOutput("a")),
-        Start(RelationshipByIndex("a", "index", "key", "value"))))
+      Query.
+        start(RelationshipByIndex("a", "index", "key", "value")).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
 
   @Test def keywordsShouldBeCaseInsensitive() {
     testQuery(
       "START s = (1) RETURN s",
-      Query(
-        Return(EntityOutput("s")),
-        Start(NodeById("s", 1))))
+      Query.
+        start(NodeById("s", 1)).
+        RETURN(ValueReturnItem(EntityValue("s"))))
   }
 
   @Test def shouldParseMultipleNodes() {
     testQuery(
       "start s = (1,2,3) return s",
-      Query(
-        Return(EntityOutput("s")),
-        Start(NodeById("s", 1, 2, 3))))
+      Query.
+        start(NodeById("s", 1, 2, 3)).
+        RETURN(ValueReturnItem(EntityValue("s"))))
   }
 
   @Test def shouldParseMultipleInputs() {
     testQuery(
       "start a = (1), b = (2) return a,b",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1), NodeById("b", 2))))
+      Query.
+        start(NodeById("a", 1), NodeById("b", 2)).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def shouldFilterOnProp() {
     testQuery(
       "start a = (1) where a.name = \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Equals(PropertyValue("a", "name"), Literal("andres"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Equals(PropertyValue("a", "name"), Literal("andres"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
 
   @Test def shouldFilterOutNodesWithoutA() {
     testQuery(
       "start a = (1) where a.name = \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Equals(PropertyValue("a", "name"), Literal("andres"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Equals(PropertyValue("a", "name"), Literal("andres"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
 
   @Test def shouldFilterOnPropWithDecimals() {
     testQuery(
       "start a = (1) where a.foo = 3.1415 return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Equals(PropertyValue("a", "foo"), Literal(3.1415))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Equals(PropertyValue("a", "foo"), Literal(3.1415))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleNot() {
     testQuery(
       "start a = (1) where not(a.name = \"andres\") return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Not(Equals(PropertyValue("a", "name"), Literal("andres")))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Not(Equals(PropertyValue("a", "name"), Literal("andres")))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleNotEqualTo() {
     testQuery(
       "start a = (1) where a.name <> \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Not(Equals(PropertyValue("a", "name"), Literal("andres")))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Not(Equals(PropertyValue("a", "name"), Literal("andres")))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleLessThan() {
     testQuery(
       "start a = (1) where a.name < \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        LessThan(PropertyValue("a", "name"), Literal("andres"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(LessThan(PropertyValue("a", "name"), Literal("andres"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleGreaterThan() {
     testQuery(
       "start a = (1) where a.name > \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        GreaterThan(PropertyValue("a", "name"), Literal("andres"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(GreaterThan(PropertyValue("a", "name"), Literal("andres"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleLessThanOrEqual() {
     testQuery(
       "start a = (1) where a.name <= \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        LessThanOrEqual(PropertyValue("a", "name"), Literal("andres"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(LessThanOrEqual(PropertyValue("a", "name"), Literal("andres"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleRegularComparison() {
     testQuery(
       "start a = (1) where \"Andres\" =~ /And.*/ return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        RegularExpression(Literal("Andres"), "And.*"))
+      Query.
+        start(NodeById("a", 1)).
+        where(RegularExpression(Literal("Andres"), "And.*")).
+        RETURN(ValueReturnItem(EntityValue("a")))
     )
   }
 
   @Test def shouldHandleGreaterThanOrEqual() {
     testQuery(
       "start a = (1) where a.name >= \"andres\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        GreaterThanOrEqual(PropertyValue("a", "name"), Literal("andres"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(GreaterThanOrEqual(PropertyValue("a", "name"), Literal("andres"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
 
   @Test def booleanLiterals() {
     testQuery(
       "start a = (1) where true = false return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Equals(Literal(true), Literal(false))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Equals(Literal(true), Literal(false))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldFilterOnNumericProp() {
     testQuery(
       "start a = (1) where 35 = a.age return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Equals(Literal(35), PropertyValue("a", "age"))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Equals(Literal(35), PropertyValue("a", "age"))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
 
   @Test def shouldCreateNotEqualsQuery() {
     testQuery(
       "start a = (1) where 35 != a.age return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Not(Equals(Literal(35), PropertyValue("a", "age")))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Not(Equals(Literal(35), PropertyValue("a", "age")))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def multipleFilters() {
     testQuery(
       "start a = (1) where a.name = \"andres\" or a.name = \"mattias\" return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Or(
-          Equals(PropertyValue("a", "name"), Literal("andres")),
-          Equals(PropertyValue("a", "name"), Literal("mattias")))))
+      Query.
+        start(NodeById("a", 1)).
+        where(Or(
+        Equals(PropertyValue("a", "name"), Literal("andres")),
+        Equals(PropertyValue("a", "name"), Literal("mattias")))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def relatedTo() {
     testQuery(
       "start a = (1) match a -[:KNOWS]-> (b) return a, b",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, Some("KNOWS"), Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, Some("KNOWS"), Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def relatedToWithoutRelType() {
     testQuery(
       "start a = (1) match a --> (b) return a, b",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def relatedToWithoutRelTypeButWithRelVariable() {
     testQuery(
       "start a = (1) match a -[r]-> (b) return r",
-      Query(
-        Return(EntityOutput("r")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", Some("r"), None, Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", Some("r"), None, Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("r"))))
   }
 
   @Test def relatedToTheOtherWay() {
     testQuery(
       "start a = (1) match a <-[:KNOWS]- (b) return a, b",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, Some("KNOWS"), Direction.INCOMING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, Some("KNOWS"), Direction.INCOMING)).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def shouldOutputVariables() {
     testQuery(
       "start a = (1) return a.name",
-      Query(
-        Return(PropertyOutput("a", "name")),
-        Start(NodeById("a", 1))))
+      Query.
+        start(NodeById("a", 1)).
+        RETURN(ValueReturnItem(PropertyValue("a", "name"))))
   }
 
   @Test def shouldHandleAndClauses() {
     testQuery(
       "start a = (1) where a.name = \"andres\" and a.lastname = \"taylor\" return a.name",
-      Query(
-        Return(PropertyOutput("a", "name")),
-        Start(NodeById("a", 1)),
-        And(
-          Equals(PropertyValue("a", "name"), Literal("andres")),
-          Equals(PropertyValue("a", "lastname"), Literal("taylor")))))
+      Query.
+        start(NodeById("a", 1)).
+        where(And(
+        Equals(PropertyValue("a", "name"), Literal("andres")),
+        Equals(PropertyValue("a", "lastname"), Literal("taylor")))).
+        RETURN(ValueReturnItem(PropertyValue("a", "name"))))
   }
 
   @Test def relatedToWithRelationOutput() {
     testQuery(
       "start a = (1) match a -[rel:KNOWS]-> (b) return rel",
-      Query(
-        Return(EntityOutput("rel")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", "rel", "KNOWS", Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", "rel", "KNOWS", Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("rel"))))
   }
 
   @Test def relatedToWithoutEndName() {
     testQuery(
       "start a = (1) match a -[:MARRIED]-> () return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "___NODE1", None, Some("MARRIED"), Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "___NODE1", None, Some("MARRIED"), Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def relatedInTwoSteps() {
     testQuery(
       "start a = (1) match a -[:KNOWS]-> b -[:FRIEND]-> (c) return c",
-      Query(
-        Return(EntityOutput("c")),
-        Start(NodeById("a", 1)),
-        Match(
-          RelatedTo("a", "b", None, Some("KNOWS"), Direction.OUTGOING),
-          RelatedTo("b", "c", None, Some("FRIEND"), Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(
+        RelatedTo("a", "b", None, Some("KNOWS"), Direction.OUTGOING),
+        RelatedTo("b", "c", None, Some("FRIEND"), Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("c")))
+    )
   }
 
   @Test def djangoRelationshipType() {
     testQuery(
       "start a = (1) match a -[:`<<KNOWS>>`]-> b return c",
-      Query(
-        Return(EntityOutput("c")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, Some("<<KNOWS>>"), Direction.OUTGOING))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, Some("<<KNOWS>>"), Direction.OUTGOING)).
+        RETURN(ValueReturnItem(EntityValue("c"))))
   }
 
   @Test def countTheNumberOfHits() {
     testQuery(
       "start a = (1) match a --> b return a, b, count(*)",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING)),
-        Aggregation(CountStar())))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        aggregation(CountStar()).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
-    @Test def distinct() {
+  @Test def distinct() {
     testQuery(
       "start a = (1) match a --> b return distinct a, b",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING)),
-        Aggregation()))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        aggregation().
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def sumTheAgesOfPeople() {
     testQuery(
       "start a = (1) match a --> b return a, b, sum(a.age)",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING)),
-        Aggregation(Sum(PropertyOutput("a", "age")))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        aggregation(ValueAggregationItem(Sum(PropertyValue("a", "age")))).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def avgTheAgesOfPeople() {
     testQuery(
       "start a = (1) match a --> b return a, b, avg(a.age)",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING)),
-        Aggregation(Avg(PropertyOutput("a", "age")))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        aggregation(ValueAggregationItem(Avg(PropertyValue("a", "age")))).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def minTheAgesOfPeople() {
     testQuery(
       "start a = (1) match (a) --> b return a, b, min(a.age)",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING)),
-        Aggregation(Min(PropertyOutput("a", "age")))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        aggregation(ValueAggregationItem(Min(PropertyValue("a", "age")))).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def maxTheAgesOfPeople() {
     testQuery(
       "start a = (1) match a --> b return a, b, max(a.age)",
-      Query(
-        Return(EntityOutput("a"), EntityOutput("b")),
-        Start(NodeById("a", 1)),
-        Match(RelatedTo("a", "b", None, None, Direction.OUTGOING)),
-        Aggregation(Max(PropertyOutput("a", "age")))))
+      Query.
+        start(NodeById("a", 1)).
+        matches(RelatedTo("a", "b", None, None, Direction.OUTGOING)).
+        aggregation(ValueAggregationItem(Max((PropertyValue("a", "age"))))).
+        RETURN(ValueReturnItem(EntityValue("a")), ValueReturnItem(EntityValue("b"))))
   }
 
   @Test def singleColumnSorting() {
     testQuery(
       "start a = (1) return a order by a.name",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Sort(SortItem(PropertyOutput("a", "name"), true))))
+      Query.
+        start(NodeById("a", 1)).
+        orderBy(SortItem(ValueReturnItem(PropertyValue("a", "name")), true)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def sortOnAggregatedColumn() {
     testQuery(
       "start a = (1) return a order by avg(a.name)",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Sort(SortItem(Avg(PropertyOutput("a", "name")), true))))
+      Query.
+        start(NodeById("a", 1)).
+        orderBy(SortItem(ValueAggregationItem(Avg(PropertyValue("a", "name"))), true)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleTwoSortColumns() {
     testQuery(
       "start a = (1) return a order by a.name, a.age",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Sort(
-          SortItem(PropertyOutput("a", "name"), true),
-          SortItem(PropertyOutput("a", "age"), true))))
+      Query.
+        start(NodeById("a", 1)).
+        orderBy(
+        SortItem(ValueReturnItem(PropertyValue("a", "name")), true),
+        SortItem(ValueReturnItem(PropertyValue("a", "age")), true)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleTwoSortColumnsAscending() {
     testQuery(
       "start a = (1) return a order by a.name ASCENDING, a.age ASC",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Sort(
-          SortItem(PropertyOutput("a", "name"), true),
-          SortItem(PropertyOutput("a", "age"), true))))
+      Query.
+        start(NodeById("a", 1)).
+        orderBy(
+        SortItem(ValueReturnItem(PropertyValue("a", "name")), true),
+        SortItem(ValueReturnItem(PropertyValue("a", "age")), true)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
+
   }
 
   @Test def orderByDescending() {
     testQuery(
       "start a = (1) return a order by a.name DESCENDING",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Sort(
-          SortItem(PropertyOutput("a", "name"), false))))
+      Query.
+        start(NodeById("a", 1)).
+        orderBy(SortItem(ValueReturnItem(PropertyValue("a", "name")), false)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
+
   }
 
   @Test def orderByDesc() {
     testQuery(
       "start a = (1) return a order by a.name desc",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Sort(
-          SortItem(PropertyOutput("a", "name"), false))))
+      Query.
+        start(NodeById("a", 1)).
+        orderBy(SortItem(ValueReturnItem(PropertyValue("a", "name")), false)).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def nullableProperty() {
     testQuery(
       "start a = (1) return a.name?",
-      Query(
-        Return(NullablePropertyOutput("a", "name")),
-        Start(NodeById("a", 1))))
+      Query.
+        start(NodeById("a", 1)).
+        RETURN(ValueReturnItem(NullablePropertyValue("a", "name"))))
   }
 
   @Test def nestedBooleanOperatorsAndParentesis() {
     testQuery(
       """start n = (1,2,3) where (n.animal = "monkey" and n.food = "banana") or (n.animal = "cow" and n.food="grass") return n""",
-      Query(
-        Return(EntityOutput("n")),
-        Start(NodeById("n", 1, 2, 3)),
-        Or(
-          And(
-            Equals(PropertyValue("n", "animal"), Literal("monkey")),
-            Equals(PropertyValue("n", "food"), Literal("banana"))),
-          And(
-            Equals(PropertyValue("n", "animal"), Literal("cow")),
-            Equals(PropertyValue("n", "food"), Literal("grass"))))))
+      Query.
+        start(NodeById("n", 1, 2, 3)).
+        where(Or(
+        And(
+          Equals(PropertyValue("n", "animal"), Literal("monkey")),
+          Equals(PropertyValue("n", "food"), Literal("banana"))),
+        And(
+          Equals(PropertyValue("n", "animal"), Literal("cow")),
+          Equals(PropertyValue("n", "food"), Literal("grass"))))).
+        RETURN(ValueReturnItem(EntityValue("n"))))
   }
 
   @Test def limit5() {
     testQuery(
       "start n=(1) return n limit 5",
-      Query(
-        Return(EntityOutput("n")),
-        Start(NodeById("n", 1)),
-        Slice(None, Some(5))))
+      Query.
+        start(NodeById("n", 1)).
+        limit(5).
+        RETURN(ValueReturnItem(EntityValue("n"))))
   }
 
   @Test def skip5() {
     testQuery(
       "start n=(1) return n skip 5",
-      Query(
-        Return(EntityOutput("n")),
-        Start(NodeById("n", 1)),
-        Slice(Some(5), None)))
+      Query.
+        start(NodeById("n", 1)).
+        skip(5).
+        RETURN(ValueReturnItem(EntityValue("n"))))
   }
 
   @Test def skip5limit5() {
     testQuery(
       "start n=(1) return n skip 5 limit 5",
-      Query(
-        Return(EntityOutput("n")),
-        Start(NodeById("n", 1)),
-        Slice(Some(5), Some(5))))
+      Query.
+        start(NodeById("n", 1)).
+        limit(5).
+        skip(5).
+        RETURN(ValueReturnItem(EntityValue("n"))))
   }
 
   @Test def relationshipType() {
     testQuery(
       "start n=(1) match n-[r]->(x) where r~TYPE = \"something\" return r",
-      Query(
-        Return(EntityOutput("r")),
-        Start(NodeById("n", 1)),
-        Match(RelatedTo("n", "x", Some("r"), None, Direction.OUTGOING)),
-        Equals(RelationshipTypeValue("r"), Literal("something"))))
+      Query.
+        start(NodeById("n", 1)).
+        matches(RelatedTo("n", "x", Some("r"), None, Direction.OUTGOING)).
+        where(Equals(RelationshipTypeValue("r"), Literal("something"))).
+        RETURN(ValueReturnItem(EntityValue("r"))))
   }
 
   @Test def relationshipTypeOut() {
     testQuery(
       "start n=(1) match n-[r]->(x) return r~TYPE",
 
-      Query(
-        Return(RelationshipTypeOutput("r")),
-        Start(NodeById("n", 1)),
-        Match(RelatedTo("n", "x", Some("r"), None, Direction.OUTGOING))))
+      Query.
+        start(NodeById("n", 1)).
+        matches(RelatedTo("n", "x", Some("r"), None, Direction.OUTGOING)).
+        RETURN(ValueReturnItem(RelationshipTypeValue("r"))))
   }
 
   @Test def countNonNullValues() {
     testQuery(
       "start a = (1) return a, count(a)",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeById("a", 1)),
-        Aggregation(Count(EntityOutput("a")))))
+      Query.
+        start(NodeById("a", 1)).
+        aggregation(ValueAggregationItem(Count(EntityValue("a")))).
+        RETURN(ValueReturnItem(EntityValue("a"))))
+
   }
 
   @Test def shouldBeAbleToHandleStringLiteralsWithApostrophe() {
     testQuery(
       "start a = (index, key, 'value') return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeByIndex("a", "index", "key", "value"))))
+      Query.
+        start(NodeByIndex("a", "index", "key", "value")).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def shouldHandleQuotationsInsideApostrophes() {
     testQuery(
       "start a = (index, key, 'val\"ue') return a",
-      Query(
-        Return(EntityOutput("a")),
-        Start(NodeByIndex("a", "index", "key", "val\"ue"))))
+      Query.
+        start(NodeByIndex("a", "index", "key", "val\"ue")).
+        RETURN(ValueReturnItem(EntityValue("a"))))
   }
 
   @Test def consoleModeParserShouldOutputNullableProperties() {
@@ -553,9 +555,10 @@ class CypherParserTest extends JUnitSuite {
     val parser = new ConsoleCypherParser()
     val executionTree = parser.parse(query)
 
-    assertEquals(Query(
-      Return(NullablePropertyOutput("a", "name")),
-      Start(NodeById("a", 1))),
+    assertEquals(
+      Query.
+        start(NodeById("a", 1)).
+        RETURN(ValueReturnItem(NullablePropertyValue("a", "name"))),
       executionTree)
   }
 

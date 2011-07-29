@@ -20,11 +20,9 @@
 package org.neo4j.cypher.commands
 
 import org.neo4j.cypher.pipes.Pipe
-import org.neo4j.graphdb.{Relationship, PropertyContainer, NotFoundException}
 import org.neo4j.cypher.pipes.aggregation._
-import org.neo4j.cypher.SyntaxException
 
-abstract sealed class ReturnItem(val identifier: Identifier) extends (Map[String, Any] => Map[String, Any]) {
+abstract sealed class ReturnItem(val identifier: Identifier) extends (Map[String, Any] => Any) {
   def assertDependencies(source: Pipe)
 
   def columnName = identifier match {
@@ -36,57 +34,21 @@ abstract sealed class ReturnItem(val identifier: Identifier) extends (Map[String
   def concreteReturnItem = this
 }
 
-case class EntityOutput(name: String) extends ReturnItem(UnboundIdentifier(name, None)) {
-  def apply(m: Map[String, Any]): Map[String, Any] = Map(name -> m.getOrElse(name, throw new NotFoundException))
+case class ValueReturnItem(value: Value) extends ReturnItem(value.identifier) {
+  def apply(m: Map[String, Any]): Any = value(m) // Map(columnName -> value(m))
 
   def assertDependencies(source: Pipe) {
-    source.symbols.assertHas(name)
+    value.checkAvailable(source.symbols)
   }
 }
 
-case class PropertyOutput(entity: String, property: String) extends ReturnItem(PropertyIdentifier(entity, property)) {
-  def apply(m: Map[String, Any]): Map[String, Any] = {
-    val node = m.getOrElse(entity, throw new NotFoundException("%s not found.".format(entity))).asInstanceOf[PropertyContainer]
 
-    try {
-    Map(entity + "." + property -> node.getProperty(property))
-    } catch {
-      case x:NotFoundException => throw new SyntaxException("%s does not exist on %s".format(this.columnName, node), x)
-    }
-  }
+case class ValueAggregationItem(value: AggregationValue) extends AggregationItem(value.identifier.name) {
 
   def assertDependencies(source: Pipe) {
-    source.symbols.assertHas(entity)
+    value.checkAvailable(source.symbols)
   }
-}
-
-case class RelationshipTypeOutput(relationship: String) extends ReturnItem(RelationshipTypeIdentifier(relationship)) {
-  def apply(m: Map[String, Any]): Map[String, Any] = {
-    val rel = m.getOrElse(relationship, throw new NotFoundException).asInstanceOf[Relationship]
-    Map(relationship + "~TYPE" -> rel.getType)
-  }
-
-  def assertDependencies(source: Pipe) {
-    source.symbols.assertHas(relationship)
-  }
-}
-
-case class NullablePropertyOutput(entity: String, property: String) extends ReturnItem(PropertyIdentifier(entity, property)) {
-  def apply(m: Map[String, Any]): Map[String, Any] = {
-    val node = m.getOrElse(entity, throw new NotFoundException).asInstanceOf[PropertyContainer]
-
-    val value = try {
-      node.getProperty(property)
-    } catch {
-      case x: NotFoundException => null
-    }
-
-    Map(entity + "." + property -> value)
-  }
-
-  def assertDependencies(source: Pipe) {
-    source.symbols.assertHas(entity)
-  }
+   def createAggregationFunction: AggregationFunction = value.createAggregationFunction
 }
 
 abstract sealed class AggregationItem(name: String) extends ReturnItem(AggregationIdentifier(name)) {
@@ -95,38 +57,11 @@ abstract sealed class AggregationItem(name: String) extends ReturnItem(Aggregati
   def createAggregationFunction: AggregationFunction
 }
 
+
 case class CountStar() extends AggregationItem("count(*)") {
   def createAggregationFunction: AggregationFunction = new CountStarFunction
 
   def assertDependencies(source: Pipe) {}
-}
-
-case class Count(inner: ReturnItem)
-  extends AggregationItem("count(" + inner.columnName + ")") with InnerReturnItem {
-  def createAggregationFunction = new CountFunction(inner)
-}
-
-case class Sum(inner: ReturnItem)
-  extends AggregationItem("sum(" + inner.columnName + ")") with InnerReturnItem {
-  def createAggregationFunction = new SumFunction(inner)
-}
-
-case class Avg(inner: ReturnItem)
-  extends AggregationItem("avg(" + inner.columnName + ")") with InnerReturnItem {
-
-  def createAggregationFunction = new AvgFunction(inner)
-}
-
-case class Max(inner: ReturnItem)
-  extends AggregationItem("max(" + inner.columnName + ")") with InnerReturnItem {
-
-  def createAggregationFunction = new MaxFunction(inner)
-}
-
-case class Min(inner: ReturnItem)
-  extends AggregationItem("min(" + inner.columnName + ")") with InnerReturnItem {
-
-  def createAggregationFunction = new MinFunction(inner)
 }
 
 trait InnerReturnItem extends AggregationItem {
@@ -135,5 +70,6 @@ trait InnerReturnItem extends AggregationItem {
   def assertDependencies(source: Pipe) {
     inner.assertDependencies(source)
   }
+
   override def concreteReturnItem = inner
 }

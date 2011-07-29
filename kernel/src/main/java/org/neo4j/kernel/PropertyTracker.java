@@ -17,26 +17,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.neo4j.cypher.commands
+package org.neo4j.kernel;
 
+import org.neo4j.graphdb.PropertyContainer;
 
-object Query {
-  def start(startItems: StartItem*) = new QueryBuilder(startItems)
+public interface PropertyTracker<T extends PropertyContainer>
+{
+    void propertyAdded( T primitive, String propertyName, Object propertyValue );
+
+    void propertyRemoved( T primitive, String propertyName, Object propertyValue );
+
+    void propertyChanged( T primitive, String propertyName, Object oldValue,
+            Object newValue );
+
 }
-
-
-
-case class Query(returns: Return, start: Start, matching: Option[Match], where: Option[Clause], aggregation: Option[Aggregation],
-                 sort: Option[Sort], slice: Option[Slice])
-
-case class Return(returnItems: ReturnItem*)
-
-case class Start(startItems: StartItem*)
-
-case class Match(patterns: Pattern*)
-
-case class Aggregation(aggregationItems: AggregationItem*)
-
-case class Sort(sortItems: SortItem*)
-
-case class Slice(from: Option[Int], limit: Option[Int])
