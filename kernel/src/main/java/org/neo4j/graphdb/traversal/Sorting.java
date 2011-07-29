@@ -23,6 +23,9 @@ import java.util.Comparator;
 
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.RelationshipExpander;
+import org.neo4j.helpers.collection.IteratorUtil;
+import org.neo4j.kernel.impl.util.SingleNodePath;
 
 public abstract class Sorting
 {
@@ -57,6 +60,25 @@ public abstract class Sorting
                 {
                     return p1.compareTo( p2 );
                 }
+            }
+        };
+    }
+    
+    public static Comparator<? super Path> endNodeRelationshipCount( final RelationshipExpander expander )
+    {
+        return new EndNodeComparator()
+        {
+            @Override
+            protected int compareNodes( Node endNode1, Node endNode2 )
+            {
+                Integer count1 = count( endNode1, expander );
+                Integer count2 = count( endNode2, expander );
+                return count1.compareTo( count2 );
+            }
+
+            private Integer count( Node node, RelationshipExpander expander )
+            {
+                return IteratorUtil.count( expander.expand( new SingleNodePath( node ) ) );
             }
         };
     }
