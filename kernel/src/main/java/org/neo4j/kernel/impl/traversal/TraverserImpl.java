@@ -39,6 +39,7 @@ import org.neo4j.graphdb.traversal.SelectorOrderer;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 import org.neo4j.graphdb.traversal.TraversalContext;
+import org.neo4j.graphdb.traversal.TraversalMetadata;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.UniquenessFilter;
 import org.neo4j.helpers.collection.CombiningIterator;
@@ -48,6 +49,7 @@ import org.neo4j.helpers.collection.PrefetchingIterator;
 class TraverserImpl implements Traverser
 {
     private final TraversalDescriptionImpl description;
+    private TraversalMetadata lastIterator;
     final Collection<Node> startNodes;
 
     TraverserImpl( TraversalDescriptionImpl description, Collection<Node> startNodes )
@@ -60,7 +62,9 @@ class TraverserImpl implements Traverser
     {
         TraverserIterator iterator = description.selectorOrdering != null ?
                 new BidirectionalTraverserIterator() : new TraverserIterator();
-        return description.sorting != null ? new SortingTraverserIterator( iterator ) : iterator;
+        Iterator<Path> result = description.sorting != null ? new SortingTraverserIterator( iterator ) : iterator;
+        lastIterator = (TraversalMetadata) result;
+        return result;
     }
 
     public Iterable<Node> nodes()
@@ -105,6 +109,12 @@ class TraverserImpl implements Traverser
             }
         };
     }
+    
+    @Override
+    public TraversalMetadata metadata()
+    {
+        return lastIterator;
+    }
 
     class TraverserIterator extends PrefetchingIterator<Path>
             implements TraversalBranchCreator, TraversalContext
@@ -137,6 +147,7 @@ class TraverserImpl implements Traverser
         @Override
         public void relationshipTraversed()
         {
+            System.out.println( "+ on " + hashCode() );
             numberOfRelationshipsTraversed++;
         }
         

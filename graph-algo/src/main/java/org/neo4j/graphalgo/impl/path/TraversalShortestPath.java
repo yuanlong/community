@@ -19,18 +19,16 @@
  */
 package org.neo4j.graphalgo.impl.path;
 
-import static org.neo4j.helpers.collection.IteratorUtil.firstOrNull;
 import static org.neo4j.kernel.CommonSelectorOrdering.LEVEL_STOP_DESCENT_ON_RESULT;
 import static org.neo4j.kernel.Traversal.shortestPathsCollisionDetector;
 import static org.neo4j.kernel.Traversal.traversal;
+import static org.neo4j.kernel.Uniqueness.NODE_PATH;
 
-import org.neo4j.graphalgo.PathFinder;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.RelationshipExpander;
-import org.neo4j.kernel.Uniqueness;
+import org.neo4j.graphdb.traversal.Traverser;
 
-public class TraversalShortestPath implements PathFinder<Path>
+public class TraversalShortestPath extends TraversalPathFinder
 {
     private final RelationshipExpander expander;
 
@@ -40,15 +38,9 @@ public class TraversalShortestPath implements PathFinder<Path>
     }
     
     @Override
-    public Path findSinglePath( Node start, Node end )
+    protected Traverser instantiateTraverser( Node start, Node end )
     {
-        return firstOrNull( findAllPaths( start, end ) );
-    }
-
-    @Override
-    public Iterable<Path> findAllPaths( final Node start, final Node end )
-    {
-        return traversal().breadthFirst().uniqueness( Uniqueness.NODE_PATH ).expand( expander )
+        return traversal().breadthFirst().uniqueness( NODE_PATH ).expand( expander )
                 .bidirectional( LEVEL_STOP_DESCENT_ON_RESULT, shortestPathsCollisionDetector(), end )
                 .traverse( start );
     }

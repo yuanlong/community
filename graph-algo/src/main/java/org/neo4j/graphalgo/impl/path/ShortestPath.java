@@ -39,6 +39,7 @@ import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
+import org.neo4j.graphdb.traversal.TraversalMetadata;
 import org.neo4j.helpers.collection.IterableWrapper;
 import org.neo4j.helpers.collection.NestingIterator;
 import org.neo4j.helpers.collection.PrefetchingIterator;
@@ -60,6 +61,7 @@ public class ShortestPath implements PathFinder<Path>
     private final int maxResultCount;
     private final RelationshipExpander relExpander;
     private final HitDecider hitDecider;
+    private Metadata lastMetadata;
     
     /**
      * Constructs a new stortest path algorithm.
@@ -120,6 +122,7 @@ public class ShortestPath implements PathFinder<Path>
 
     private Iterable<Path> internalPaths( Node start, Node end, boolean stopAsap )
     {
+        lastMetadata = new Metadata();
         if ( start.equals( end ) )
         {
             return Arrays.asList( PathImpl.singular( start ) );
@@ -145,6 +148,12 @@ public class ShortestPath implements PathFinder<Path>
         
         Collection<Hit> least = hits.least();
         return least != null ? hitsToPaths( least, start, end ) : Collections.<Path>emptyList();
+    }
+    
+    @Override
+    public TraversalMetadata metadata()
+    {
+        return lastMetadata;
     }
 
     // Few long-lived instances
@@ -219,6 +228,7 @@ public class ShortestPath implements PathFinder<Path>
                 {
                     directionData.stop = true;
                     otherSide.stop = true;
+                    lastMetadata.paths++;
                 }
             }
         }
@@ -293,6 +303,7 @@ public class ShortestPath implements PathFinder<Path>
                 {
                     return null;
                 }
+                lastMetadata.rels++;
                 if ( !hitDecider.canVisitRelationship( sharedVisitedRels, nextRel ) )
                 {
                     continue;
@@ -622,6 +633,24 @@ public class ShortestPath implements PathFinder<Path>
         public boolean canVisitRelationship( Collection<Long> rels, Relationship rel )
         {
             return rels.add( rel.getId() );
+        }
+    }
+    
+    private static class Metadata implements TraversalMetadata
+    {
+        private int rels;
+        private int paths;
+        
+        @Override
+        public int getNumberOfPathsReturned()
+        {
+            return paths;
+        }
+        
+        @Override
+        public int getNumberOfRelationshipsTraversed()
+        {
+            return rels;
         }
     }
 }

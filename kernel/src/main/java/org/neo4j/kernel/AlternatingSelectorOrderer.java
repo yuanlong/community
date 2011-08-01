@@ -23,16 +23,40 @@ import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalContext;
 
-public class AlternatingSelectorOrderer extends AbstractSelectorOrderer<Void>
+public class AlternatingSelectorOrderer extends AbstractSelectorOrderer<Integer>
 {
     public AlternatingSelectorOrderer( BranchSelector startSelector, BranchSelector endSelector )
     {
         super( startSelector, endSelector );
     }
+    
+    @Override
+    protected Integer initialState()
+    {
+        return 0;
+    }
 
     @Override
     public TraversalBranch next( TraversalContext metadata )
     {
-        return nextBranchFromNextSelector( metadata, true );
+        TraversalBranch branch = nextBranchFromNextSelector( metadata, true );
+        Integer previousDepth = getStateForCurrentSelector();
+        if ( branch != null && branch.length() == previousDepth.intValue() )
+        {
+            return branch;
+        }
+        else
+        {
+            if ( /*stopDescentOnResult && */ metadata.getNumberOfPathsReturned() > 0 )
+            {
+                return null;
+            }
+
+            if ( branch != null )
+            {
+                setStateForCurrentSelector( branch.length() );
+            }
+        }
+        return branch;
     }
 }

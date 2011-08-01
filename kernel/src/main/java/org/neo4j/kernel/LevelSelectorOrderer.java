@@ -19,8 +19,6 @@
  */
 package org.neo4j.kernel;
 
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.neo4j.graphdb.traversal.BranchSelector;
@@ -29,7 +27,7 @@ import org.neo4j.graphdb.traversal.TraversalContext;
 import org.neo4j.helpers.Pair;
 
 public class LevelSelectorOrderer extends
-        AbstractSelectorOrderer<Pair<AtomicInteger, Queue<TraversalBranch>>>
+        AbstractSelectorOrderer<Pair<AtomicInteger, TraversalBranch[]>>
 {
     private final boolean stopDescentOnResult;
 
@@ -40,17 +38,17 @@ public class LevelSelectorOrderer extends
         this.stopDescentOnResult = stopDescentOnResult;
     }
 
-    protected Pair<AtomicInteger, Queue<TraversalBranch>> initialState()
+    protected Pair<AtomicInteger, TraversalBranch[]> initialState()
     {
-        return Pair.<AtomicInteger, Queue<TraversalBranch>> of( new AtomicInteger(),
-                new LinkedList<TraversalBranch>() );
+        return Pair.<AtomicInteger, TraversalBranch[]> of( new AtomicInteger(),
+                new TraversalBranch[] {null} );
     }
 
     @Override
     public TraversalBranch next( TraversalContext metadata )
     {
         TraversalBranch branch = nextBranchFromCurrentSelector( metadata, false );
-        Pair<AtomicInteger, Queue<TraversalBranch>> state = getStateForCurrentSelector();
+        Pair<AtomicInteger, TraversalBranch[]> state = getStateForCurrentSelector();
         AtomicInteger previousDepth = state.first();
         if ( branch != null && branch.length() == previousDepth.get() )
         {
@@ -68,12 +66,14 @@ public class LevelSelectorOrderer extends
             if ( branch != null )
             {
                 previousDepth.set( branch.length() );
-                state.other().add( branch );
+                state.other()[0] = branch;
             }
             BranchSelector otherSelector = nextSelector();
-            TraversalBranch otherBranch = getStateForCurrentSelector().other().poll();
+            Pair<AtomicInteger, TraversalBranch[]> otherState = getStateForCurrentSelector();
+            TraversalBranch otherBranch = otherState.other()[0];
             if ( otherBranch != null )
             {
+                otherState.other()[0] = null;
                 return otherBranch;
             }
 

@@ -20,6 +20,7 @@
 package org.neo4j.graphalgo.impl.path;
 
 import static org.neo4j.graphdb.traversal.Evaluators.includeWhereEndNodeIs;
+import static org.neo4j.helpers.collection.IteratorUtil.firstOrNull;
 import static org.neo4j.kernel.Traversal.traversal;
 
 import java.util.Iterator;
@@ -34,6 +35,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.TraversalMetadata;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.kernel.Uniqueness;
 
@@ -48,6 +50,7 @@ public class Dijkstra implements PathFinder<WeightedPath>
 
     private final RelationshipExpander expander;
     private final CostEvaluator<Double> costEvaluator;
+    private Traverser lastTraverser;
 
     public Dijkstra( RelationshipExpander expander, CostEvaluator<Double> costEvaluator )
     {
@@ -57,13 +60,13 @@ public class Dijkstra implements PathFinder<WeightedPath>
 
     public Iterable<WeightedPath> findAllPaths( Node start, final Node end )
     {
-        final Traverser traverser = TRAVERSAL.expand( expander ).order(
+        lastTraverser = TRAVERSAL.expand( expander ).order(
                 new SelectorFactory( costEvaluator ) ).evaluator( includeWhereEndNodeIs( end ) ).traverse( start );
         return new Iterable<WeightedPath>()
         {
             public Iterator<WeightedPath> iterator()
             {
-                return new StopAfterWeightIterator( traverser.iterator(),
+                return new StopAfterWeightIterator( lastTraverser.iterator(),
                         costEvaluator );
             }
         };
@@ -71,10 +74,15 @@ public class Dijkstra implements PathFinder<WeightedPath>
 
     public WeightedPath findSinglePath( Node start, Node end )
     {
-        Iterator<WeightedPath> result = findAllPaths( start, end ).iterator();
-        return result.hasNext() ? result.next() : null;
+        return firstOrNull( findAllPaths( start, end ) );
     }
-
+    
+    @Override
+    public TraversalMetadata metadata()
+    {
+        return lastTraverser.metadata();
+    }
+    
     private static class SelectorFactory extends BestFirstSelectorFactory<Double, Double>
     {
         private final CostEvaluator<Double> evaluator;

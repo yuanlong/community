@@ -38,6 +38,7 @@ import org.neo4j.graphdb.traversal.BranchSelector;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalBranchCreator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.TraversalMetadata;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 import org.neo4j.kernel.Uniqueness;
@@ -53,12 +54,15 @@ import org.neo4j.kernel.Uniqueness;
  *
  * @author Mattias Persson
  * @author Tobias Ivarsson
+ * 
+ * TODO rewrite using the bidirectional traversal functionality
  */
 public class ExactDepthPathFinder implements PathFinder<Path>
 {
     private final RelationshipExpander expander;
     private final int onDepth;
     private final int startThreshold;
+    private CombinedMetadata lastMetadata;
 
     public ExactDepthPathFinder( RelationshipExpander expander, int onDepth,
             int startThreshold )
@@ -101,6 +105,7 @@ public class ExactDepthPathFinder implements PathFinder<Path>
         Traverser startTraverser = base.evaluator( atDepth( firstHalf ) ).traverse( start );
         final int secondHalf = onDepth - firstHalf;
         Traverser endTraverser = base.evaluator( atDepth( secondHalf ) ).traverse( end );
+        lastMetadata = new CombinedMetadata( startTraverser.metadata(), endTraverser.metadata() );
 
         final Iterator<Path> startIterator = startTraverser.iterator();
         final Iterator<Path> endIterator = endTraverser.iterator();
@@ -126,6 +131,13 @@ public class ExactDepthPathFinder implements PathFinder<Path>
         };
     }
 
+    @Override
+    public TraversalMetadata metadata()
+    {
+        // TODO Auto-generated method stub
+        return null;
+    }
+    
     private Path toPath( Path[] found, Node start )
     {
         Path startPath = found[0];
@@ -136,6 +148,7 @@ public class ExactDepthPathFinder implements PathFinder<Path>
             startPath = endPath;
             endPath = tmpPath;
         }
+        lastMetadata.paths++;
         return toBuilder( startPath ).build( toBuilder( endPath ) );
     }
 
@@ -181,6 +194,31 @@ public class ExactDepthPathFinder implements PathFinder<Path>
         {
             this.position = position;
             this.visitor = visitor;
+        }
+    }
+    
+    private static class CombinedMetadata implements TraversalMetadata
+    {
+        private final TraversalMetadata first;
+        private final TraversalMetadata other;
+        private int paths;
+
+        CombinedMetadata( TraversalMetadata first, TraversalMetadata other )
+        {
+            this.first = first;
+            this.other = other;
+        }
+
+        @Override
+        public int getNumberOfPathsReturned()
+        {
+            return paths;
+        }
+
+        @Override
+        public int getNumberOfRelationshipsTraversed()
+        {
+            return first.getNumberOfRelationshipsTraversed()+other.getNumberOfRelationshipsTraversed();
         }
     }
 }

@@ -20,6 +20,7 @@
 package org.neo4j.graphalgo.impl.path;
 
 import static org.neo4j.graphdb.traversal.Evaluators.includeWhereEndNodeIs;
+import static org.neo4j.helpers.collection.IteratorUtil.firstOrNull;
 import static org.neo4j.kernel.Traversal.traversal;
 
 import java.util.Iterator;
@@ -35,6 +36,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.RelationshipExpander;
 import org.neo4j.graphdb.traversal.TraversalBranch;
 import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.TraversalMetadata;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.kernel.Uniqueness;
 
@@ -42,6 +44,7 @@ public class ExperimentalAStar implements PathFinder<WeightedPath>
 {
     private final TraversalDescription traversalDescription;
     private final CostEvaluator<Double> costEvaluator;
+    private Traverser lastTraverser;
 
     private final EstimateEvaluator<Double> estimateEvaluator;
 
@@ -56,24 +59,28 @@ public class ExperimentalAStar implements PathFinder<WeightedPath>
 
     public Iterable<WeightedPath> findAllPaths( Node start, final Node end )
     {
-        final Traverser traverser = traversalDescription.order(
+        lastTraverser = traversalDescription.order(
                 new SelectorFactory( end ) ).evaluator( includeWhereEndNodeIs( end ) ).traverse( start );
         return new Iterable<WeightedPath>()
         {
             public Iterator<WeightedPath> iterator()
             {
-                return new StopAfterWeightIterator( traverser.iterator(),
-                        costEvaluator );
+                return new StopAfterWeightIterator( lastTraverser.iterator(), costEvaluator );
             }
         };
     }
 
     public WeightedPath findSinglePath( Node start, Node end )
     {
-        Iterator<WeightedPath> paths = findAllPaths( start, end ).iterator();
-        return paths.hasNext() ? paths.next() : null;
+        return firstOrNull( findAllPaths( start, end ) );
     }
 
+    @Override
+    public TraversalMetadata metadata()
+    {
+        return lastTraverser.metadata();
+    }
+    
     private static class PositionData implements Comparable<PositionData>
     {
         private final double wayLengthG;

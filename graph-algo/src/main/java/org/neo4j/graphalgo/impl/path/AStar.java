@@ -43,6 +43,7 @@ import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PropertyContainer;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipExpander;
+import org.neo4j.graphdb.traversal.TraversalMetadata;
 import org.neo4j.helpers.collection.PrefetchingIterator;
 
 public class AStar implements PathFinder<WeightedPath>
@@ -50,6 +51,7 @@ public class AStar implements PathFinder<WeightedPath>
     private final RelationshipExpander expander;
     private final CostEvaluator<Double> lengthEvaluator;
     private final EstimateEvaluator<Double> estimateEvaluator;
+    private Metadata lastMetadata;
     
     public AStar( RelationshipExpander expander,
             CostEvaluator<Double> lengthEvaluator, EstimateEvaluator<Double> estimateEvaluator )
@@ -80,6 +82,7 @@ public class AStar implements PathFinder<WeightedPath>
                     rel = nextRelId == null ? null : graphDb.getRelationshipById( nextRelId );
                 }
                 Path path = toPath( start, rels );
+                lastMetadata.paths++;
                 return new WeightedPathImpl( weight, path );
             }
         }
@@ -90,6 +93,12 @@ public class AStar implements PathFinder<WeightedPath>
     {
         WeightedPath path = findSinglePath( node, end );
         return path != null ? Arrays.asList( path ) : Collections.<WeightedPath>emptyList();
+    }
+    
+    @Override
+    public TraversalMetadata metadata()
+    {
+        return lastMetadata;
     }
     
     private Path toPath( Node start, LinkedList<Relationship> rels )
@@ -201,6 +210,7 @@ public class AStar implements PathFinder<WeightedPath>
         {
             for ( Relationship rel : expander.expand( this ) )
             {
+                lastMetadata.rels++;
                 Node node = rel.getOtherNode( this.lastNode );
                 if ( this.visitedNodes.contains( node.getId() ) )
                 {
@@ -273,6 +283,24 @@ public class AStar implements PathFinder<WeightedPath>
         public Iterator<PropertyContainer> iterator()
         {
             throw new UnsupportedOperationException();
+        }
+    }
+    
+    private static class Metadata implements TraversalMetadata
+    {
+        private int rels;
+        private int paths;
+        
+        @Override
+        public int getNumberOfPathsReturned()
+        {
+            return paths;
+        }
+
+        @Override
+        public int getNumberOfRelationshipsTraversed()
+        {
+            return rels;
         }
     }
 }
