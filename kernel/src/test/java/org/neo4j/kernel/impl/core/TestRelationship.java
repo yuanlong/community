@@ -349,7 +349,7 @@ public class TestRelationship extends AbstractNeo4jTestCase
         {
             getTransaction().success();
             getTransaction().finish();
-            fail( "deleting node with relaitonship should not commit." );
+            fail( "deleting node with relationship should not commit." );
         }
         catch ( Exception e )
         {
@@ -955,5 +955,58 @@ public class TestRelationship extends AbstractNeo4jTestCase
         assertEquals( expectedCount, count( node1.getRelationships() ) );
         newTransaction();
         assertEquals( expectedCount, count( node1.getRelationships() ) );
+    }
+
+    @Test
+    public void grabSizeWithTwoTypesDeleteAndCount()
+    {
+        int grabSize = 2;
+        GraphDatabaseService db = new ImpermanentGraphDatabase(
+                "target/test-data/test-db4", stringMap(
+                        "relationship_grab_size", "" + grabSize ) );
+        Transaction tx = db.beginTx();
+        Node node1 = db.createNode();
+        Node node2 = db.createNode();
+
+        int count = 0;
+        RelationshipType type1 = DynamicRelationshipType.withName( "type" );
+        RelationshipType type2 = DynamicRelationshipType.withName( "bar" );
+        // Create more than one grab size
+        for ( int i = 0; i < 11; i++ )
+        {
+            node1.createRelationshipTo( node2, type1 );
+            count++;
+        }
+        for ( int i = 0; i < 10; i++ )
+        {
+            node1.createRelationshipTo( node2, type2 );
+            count++;
+        }
+        tx.success();
+        tx.finish();
+
+        clearCacheAndCreateDeleteCount( db, node1, node2, type1, type2, count );
+        clearCacheAndCreateDeleteCount( db, node1, node2, type2, type1, count );
+        clearCacheAndCreateDeleteCount( db, node1, node2, type1, type1, count );
+        clearCacheAndCreateDeleteCount( db, node1, node2, type2, type2, count );
+        db.shutdown();
+    }
+
+    private void clearCacheAndCreateDeleteCount( GraphDatabaseService db, Node node1, Node node2,
+            RelationshipType createType, RelationshipType deleteType, int expectedCount )
+    {
+        Transaction tx = db.beginTx();
+        ( (AbstractGraphDatabase) db ).getConfig().getGraphDbModule().getNodeManager().clearCache();
+
+        node1.createRelationshipTo( node2, createType );
+        Relationship rel1 = node1.getRelationships( deleteType ).iterator().next();
+        rel1.delete();
+
+        assertEquals( expectedCount, count( node1.getRelationships() ) );
+        assertEquals( expectedCount, count( node2.getRelationships() ) );
+        tx.success();
+        tx.finish();
+        assertEquals( expectedCount, count( node1.getRelationships() ) );
+        assertEquals( expectedCount, count( node2.getRelationships() ) );
     }
 }
