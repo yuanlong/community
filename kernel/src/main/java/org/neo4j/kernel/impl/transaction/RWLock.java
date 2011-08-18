@@ -60,6 +60,7 @@ class RWLock
     private int writeCount = 0; // total writeCount
     private int readCount = 0; // total readCount
     private int marked = 0; // synch helper in LockManager
+    long lastReleased = System.currentTimeMillis();
 
     private final Object resource; // the resource for this RWLock
 
@@ -385,6 +386,7 @@ class RWLock
                 txLockElementMap.remove( tx );
             }
             ragManager.lockReleased( this, tx );
+            lastReleased = System.currentTimeMillis();
         }
 
         // the threads in the waitingList cannot be currentThread
@@ -426,11 +428,16 @@ class RWLock
     {
         return waitingThreadList.size();
     }
+    
+    boolean isOld()
+    {
+        return System.currentTimeMillis()-lastReleased > 30*1000;
+    }
 
     synchronized void dumpStack()
     {
         System.out.println( "Total lock count: readCount=" + readCount
-            + " writeCount=" + writeCount + " for " + resource );
+            + " writeCount=" + writeCount + " for " + resource + ", " + ((System.currentTimeMillis()-lastReleased)/1000) + "s" );
 
         System.out.println( "Waiting list:" );
         Iterator<WaitElement> wElements = waitingThreadList.iterator();

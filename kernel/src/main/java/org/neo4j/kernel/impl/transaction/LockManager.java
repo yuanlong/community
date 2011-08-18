@@ -271,4 +271,43 @@ public class LockManager
             }
         }
     }
+
+    public boolean dumpOldLocks()
+    {
+        synchronized ( resourceLockMap )
+        {
+            Iterator<RWLock> itr = resourceLockMap.values().iterator();
+            int emptyLockCount = 0;
+            int oldLockCount = 0;
+            while ( itr.hasNext() )
+            {
+                RWLock lock = itr.next();
+                if ( !lock.isOld() ) continue;
+                if ( lock.getWriteCount() > 0 || lock.getReadCount() > 0 )
+                {
+                    lock.dumpStack();
+                    oldLockCount++;
+                }
+                else
+                {
+                    if ( lock.getWaitingThreadsCount() > 0 )
+                    {
+                        lock.dumpStack();
+                    }
+                    emptyLockCount++;
+                    oldLockCount++;
+                }
+            }
+            if ( emptyLockCount > 0 )
+            {
+                System.out.println( "There are " + emptyLockCount
+                    + " empty locks" );
+            }
+            if ( oldLockCount > 0 )
+            {
+                System.out.println( "=== OLD LOCKS FOUND " + oldLockCount + " ===" );
+            }
+            return oldLockCount > 0;
+        }
+    }
 }
