@@ -19,25 +19,29 @@
  */
 package org.neo4j.cypher.pipes
 
-import org.neo4j.cypher.SymbolTable
-import org.neo4j.graphdb.{Relationship, Node, PropertyContainer}
-import org.neo4j.cypher.commands.{Identifier, RelationshipIdentifier, NodeIdentifier}
+import org.neo4j.cypher.commands.{RelatedTo, PathItem, PathIdentifier}
+import org.neo4j.cypher.{PathImpl, SymbolTable}
+import org.neo4j.graphdb.PropertyContainer
 
-class StartPipe[T <: PropertyContainer](name: String, f: () => Iterable[T]) extends Pipe {
-  def this(name: String, sourceIterable: Iterable[T]) = this(name, () => sourceIterable)
-
-  def source : Iterable[T] = f()
-
-  val symbolType: Identifier = source match {
-    case nodes: Iterable[Node] => NodeIdentifier(name)
-    case rels: Iterable[Relationship] => RelationshipIdentifier(name)
-  }
-
-  val symbols: SymbolTable = new SymbolTable(List(symbolType))
-
+class PathPipe(source: Pipe, path: PathItem) extends Pipe {
   def foreach[U](f: (Map[String, Any]) => U) {
-    source.foreach((x) => {
-      f(Map(name -> x))
+
+    source.foreach(m => {
+      def get(x:String):PropertyContainer = m(x).asInstanceOf[PropertyContainer]
+
+      val firstNode = path.pathPattern.head match {
+        case RelatedTo(left, right, relName, x, xx) => left
+      }
+
+      val p = Seq(get(firstNode)) ++ path.pathPattern.flatMap(p => p match {
+        case RelatedTo(left, right, relName, x, xx) => Seq(get(relName), get(right))
+      })
+
+      val pathImpl = new PathImpl(p: _*)
+
+      f( m + (path.pathName -> pathImpl) )
     })
   }
+
+  val symbols: SymbolTable = source.symbols.add(Seq(PathIdentifier(path.pathName)))
 }

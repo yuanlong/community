@@ -26,17 +26,30 @@ import org.neo4j.cypher.SyntaxException
 
 
 trait MatchClause extends JavaTokenParsers with Tokens {
+
+  val namer = new NodeNamer
+
   def matching: Parser[Match] = ignoreCase("match") ~> rep1sep(path, ",") ^^ { case matching:List[List[Pattern]] => Match(matching.flatten: _*) }
 
-  def path: Parser[List[Pattern]] = relatedNode ~ rep1(relatedTail) ^^ {
-    case head ~ tails => {
-      val namer = new NodeNamer
-      var last = namer.name(head)
-      val list = tails.map((item) => item match { case (back, relName, relType, forward, end) => {
-        val endName = namer.name(end)
-        val result: Pattern = RelatedTo(last, endName, relName, relType, getDirection(back, forward))
+  def path = pathSegment | parenPath | noParenPath
 
-        last = endName
+  def parenPath : Parser[List[Pattern]] = identity ~ "=" ~ "(" ~ pathSegment ~ ")" ^^ {
+    case p ~ "=" ~ "(" ~ pathSegment ~ ")" => List(PathItem(p, pathSegment: _*))
+  }
+
+  def noParenPath : Parser[List[Pattern]] = identity ~ "=" ~ pathSegment ^^ {
+    case p ~ "=" ~ pathSegment => List(PathItem(p, pathSegment: _*))
+  }
+
+  def pathSegment: Parser[List[Pattern]] = node ~ rep1(relatedTail) ^^ {
+    case head ~ tails => {
+      var fromNode = namer.name(head)
+      val list = tails.map(item => item match { case (back, rel, relType, forward, end) => {
+        val toNode = namer.name(end)
+        val relName = namer.name(rel)
+        val result: Pattern = RelatedTo(fromNode, toNode, relName, relType, getDirection(back, forward))
+
+        fromNode = toNode
 
         result
       }})
@@ -50,26 +63,29 @@ trait MatchClause extends JavaTokenParsers with Tokens {
       case (false,true) => Direction.OUTGOING
       case _ => Direction.BOTH
     }
+
   class NodeNamer {
     var lastNodeNumber = 0
 
     def name(s:Option[String]):String = s match {
       case None => {
         lastNodeNumber += 1
-        "___NODE" + lastNodeNumber
+        "  UNNAMED" + lastNodeNumber
       }
       case Some(x) => x
     }
   }
 
-  def relatedNode:Parser[Option[String]] = opt("(") ~ opt(identity) ~ opt(")") ^^ {
-    case None ~ None ~ None => throw new SyntaxException("Matching nodes without identifiers have to have parenthesis: ()")
-    case None ~ name ~ None => name
-    case Some(l) ~ name ~ Some(r) => name
-    case l ~ Some(name) ~ r => throw new SyntaxException("Unfinished parenthesis around '" + name + "'")
+  def node:Parser[Option[String]] =  parensNode | relatedNode
+
+  def parensNode:Parser[Option[String]] = "(" ~> opt(identity) <~ ")"
+
+  def relatedNode:Parser[Option[String]] = opt(identity) ^^ {
+    case None => throw new SyntaxException("Matching nodes without identifiers have to have parenthesis: ()")
+    case x => x
   }
 
-  def relatedTail = opt("<") ~ "-" ~ opt("[" ~> relationshipInfo  <~ "]") ~ "-" ~ opt(">") ~ relatedNode ^^ {
+  def relatedTail = opt("<") ~ "-" ~ opt("[" ~> relationshipInfo  <~ "]") ~ "-" ~ opt(">") ~ node ^^ {
     case back ~ "-" ~ relInfo ~ "-" ~ forward ~ end => relInfo match {
       case Some((relName, relType)) => (back, relName, relType, forward, end)
       case None => (back, None, None, forward, end)
